@@ -1,31 +1,37 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
-from scipy.spatial import Voronoi
+from scipy.spatial import Voronoi, voronoi_plot_2d
 
-from .colorised_voronoi import voronoi_finite_polygons_2d
+matplotlib.use('qtagg')
 
 def main() -> None:
     # make up data points
     np.random.seed(1234)
-    points = np.random.rand(15, 2)
 
-    # compute Voronoi tesselation
+    # Source - https://stackoverflow.com/a
+    # Posted by Arrows
+    # Retrieved 2026-01-14, License - CC BY-SA 4.0
+
+    # make up data points
+    points = np.random.rand(15,2)
+
+    # add 4 distant dummy points
+    points = np.append(points, [[999,999], [-999,999], [999,-999], [-999,-999]], axis = 0)
+
+    # compute Voronoi tessellation
     vor = Voronoi(points)
 
     # plot
-    regions, vertices = voronoi_finite_polygons_2d(vor)
-    print("--")
-    print(regions)
-    print("--")
-    print(vertices)
+    voronoi_plot_2d(vor, show_vertices=False)
 
     # colorize
-    for region in regions:
-        polygon = vertices[region]
-        plt.fill(*zip(*polygon), alpha=0.4)
+    for region in vor.regions:
+        if not -1 in region:
+            polygon = [vor.vertices[i] for i in region]
+            plt.fill(*zip(*polygon))
 
-    plt.plot(points[:,0], points[:,1], 'ko')
-    plt.xlim(vor.min_bound[0] - 0.1, vor.max_bound[0] + 0.1)
-    plt.ylim(vor.min_bound[1] - 0.1, vor.max_bound[1] + 0.1)
+    # fix the range of axes
+    plt.xlim([0,1]), plt.ylim([0,1])
 
     plt.show()

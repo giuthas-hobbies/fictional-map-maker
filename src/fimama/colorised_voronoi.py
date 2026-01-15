@@ -3,7 +3,6 @@
 # Retrieved 2026-01-14, License - CC BY-SA 3.0
 
 import numpy as np
-from scipy.spatial import Voronoi
 
 def voronoi_finite_polygons_2d(vor, radius=None):
     """
@@ -77,7 +76,7 @@ def voronoi_finite_polygons_2d(vor, radius=None):
             new_region.append(len(new_vertices))
             new_vertices.append(far_point.tolist())
 
-        # sort region counterclockwise
+        # sort region counter-clockwise
         vs = np.asarray([new_vertices[v] for v in new_region])
         c = vs.mean(axis=0)
         angles = np.arctan2(vs[:,1] - c[1], vs[:,0] - c[0])

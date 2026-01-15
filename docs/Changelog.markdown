@@ -27,7 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Provide means for working with different world geometries.
   * My own main application is a cylinder world.
-* Erosion/hydrology modelling with differentiation for different terrain types would be nice.
+  * SciPy can deal with Voronoi diagrams on a ball. Obviously we should be able
+    to use this for mapping a whole planet.
+* Erosion/hydrology modelling with differentiation for different terrain types
+  would be nice.
 
 ## [0.1.0] - 2026-01-16
 
