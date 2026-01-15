@@ -1,7 +1,7 @@
 [project]
 name = "fimama"
 version = "0.1.0"
-description = "Add your description here"
+description = "Fictional Map Maker"
 readme = "README.md"
 authors = [
     { name = "Pertti Palo", email = "giuthas@gmail.com" }
