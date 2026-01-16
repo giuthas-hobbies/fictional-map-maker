@@ -12,7 +12,7 @@ env:
 jobs:
   details:
     runs-on: ubuntu-latest
-    if: github.repository == 'giuthas-hobbies/fictional-map-maker/'
+    # if: github.repository == 'giuthas-hobbies/fictional-map-maker/'
     outputs:
       new_version: ${{ steps.release.outputs.new_version }}
       suffix: ${{ steps.release.outputs.suffix }}
@@ -33,6 +33,7 @@ jobs:
             echo "Version is $NEW_VERSION"
             echo "Suffix is $SUFFIX"
             echo "Tag name is $TAG_NAME"
+            echo "Repository is ${{ github.repository }}"
           else
             echo "No tag found"
             exit 1
