@@ -25,12 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Make the maps extendable.
+  * This includes continuing a map from one or more sides and
+  * Creating submaps/overmaps with larger/smaller scales.
 * Provide means for working with different world geometries.
   * My own main application is a cylinder world.
   * SciPy can deal with Voronoi diagrams on a ball. Obviously we should be able
     to use this for mapping a whole planet.
 * Erosion/hydrology modelling with differentiation for different terrain types
   would be nice.
+
+## [0.1.0] - 2026-01-15
+
+### Highlights
+
+- First PyPi release attempt.
+
 
 ## [0.1.0-alpha.7] - 2026-01-15
 
