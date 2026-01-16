@@ -35,11 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Erosion/hydrology modelling with differentiation for different terrain types
   would be nice.
 
-## [0.1.1] - 2026-01-15
+## [0.1.2] - 2026-01-15
 
 ### Highlights
 
-- Second PyPi release attempt.
+- Third PyPi release attempt.
 
 
 ## [0.1.0] - 2026-01-15
