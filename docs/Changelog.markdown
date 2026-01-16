@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Map configuration from a file.
+    - Later on map configuration in the gui and saveable/loadable to/from a
+      file.
 * Make the maps extendable.
   * This includes continuing a map from one or more sides and
   * Creating submaps/overmaps with larger/smaller scales.
@@ -34,6 +37,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     to use this for mapping a whole planet.
 * Erosion/hydrology modelling with differentiation for different terrain types
   would be nice.
+
+## [0.2.0] - 2026-01-18
+
+### Highlights
+
+- Random heightmap instead of just random cell values.
+
+### Added
+
+- Heightmap generation with ???.
+
 
 ## [0.1.2] - 2026-01-15
 
