@@ -1,6 +1,6 @@
 [project]
 name = "fimama"
-version = "0.1.0"
+version = "0.1.0a0"
 description = "Fictional Map Maker"
 readme = "README.md"
 authors = [
