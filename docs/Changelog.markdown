@@ -32,15 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Erosion/hydrology modelling with differentiation for different terrain types
   would be nice.
 
-## [0.1.0] - 2026-01-16
+## [0.1.0a1] - 2026-01-15
 
 ### Highlights
 
-- First version.
-- Basic heightmap generation.
+- First test version.
 
 ### Added
 
 - Voronoi grid that will be the basis of rest of the map.
-- Rudimentary docs.
 - Automated release mechanic.
