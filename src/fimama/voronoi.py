@@ -1,11 +1,18 @@
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
-import matplotlib.pyplot as plt
+
 from scipy.spatial import Voronoi, voronoi_plot_2d
 
+# from icecream import ic
 
-def voronoi_map(heightmap: np.ndarray = None, config = None):
+def voronoi_map(
+    axes: Axes,
+    fig,
+    heightmap: np.ndarray = None,
+    config = None
+    ):
 
     np.random.seed(1234)
     if heightmap is not None:
@@ -20,45 +27,56 @@ def voronoi_map(heightmap: np.ndarray = None, config = None):
     ]
     base_points = base_points.reshape(2,-1).T
     points = base_points + np.random.random_sample(base_points.shape) - .5
-    print(base_points)
 
     # TODO 0.3: better dummy points or better yet exclude outermost ring of
     # points while keeping them saved as the basis of extending the map.
     # add 4 distant dummy points
-    # base_points = np.append(base_points, [[999,999], [-999,999], [999,-999], [-999,-999]], axis = 0)
-    # points = np.append(points, [[999,999], [-999,999], [999,-999], [-999,-999]], axis = 0)
+    dummy_points = []
+    dummy_points = [[999,999], [-999,999], [999,-999], [-999,-999]]
+    base_points = np.append(base_points, dummy_points, axis = 0)
+    points = np.append(points, dummy_points, axis = 0)
 
     # compute Voronoi tessellation
     voronoi = Voronoi(points)
 
-    # plot
-    fig, ax = plt.subplots()
-    # voronoi_plot_2d(vor=voronoi, ax=ax, show_vertices=False, show_points=False)
+    # voronoi_plot_2d(vor=voronoi, ax=axes, show_vertices=False, show_points=False)
+
+    # map regions to points
+    regions_to_points = np.argsort(voronoi.point_region)
 
     # Polygon patches for the voronoi regions
     polygons = []
-    for region in voronoi.regions:
-        if len(region) > 0:
-            polygon = Polygon([voronoi.vertices[i] for i in region], closed=True)
+    polygon_index = 0
+    heights = np.zeros(len(points) - len(dummy_points))
+    heightmap = heightmap.flatten()
+    for i, region in enumerate(voronoi.regions):
+        if not -1 in region and len(region) > 0:
+            vertices = [voronoi.vertices[i] for i in region]
+            polygon = Polygon(vertices, closed=True)
             polygons.append(polygon)
+            # center = np.mean(polygon.get_xy(), axis=0)
+            # axes.text(center[0], center[1], f"{i}")
+            # index, = np.where(voronoi.point_region == i)
+            # index = index[0]
+            # ic(index, regions_to_points[i-1])
+            heights[polygon_index] = heightmap[regions_to_points[i-1]]
+            polygon_index += 1
+            # axes.text(
+            #     point[0], point[1],
+            #     f"{j}, {i}",
+            #     horizontalalignment='center',
+            #     verticalalignment='center'
+            # )
+    # ic(points_in_regions[1:])
+    # ic(region_to_polygon[1:])
+    # ic(voronoi.point_region)
+    # ic(regions_to_points)
     poly_collection = PatchCollection(patches=polygons, cmap="terrain")
 
-    # Generate height field and add it to the collection as data
-    print(base_points[voronoi.point_region-1])
-    print(voronoi.npoints)
-    print(len(base_points))
-    heights = 100 * (np.random.rand(len(polygons))-.2)
     poly_collection.set_array(heights)
-    if heightmap is not None:
-        for i in range(voronoi.npoints):
-            x, y = np.int64(base_points[voronoi.point_region[i]-1])
-            heights[i] = heightmap[x, y]
-
-    ax.add_collection(poly_collection)
-    fig.colorbar(poly_collection, ax=ax)
+    axes.add_collection(poly_collection)
+    fig.colorbar(poly_collection, ax=axes)
 
     # fix the range of axes
-    plt.xlim([-1,grid_shape[0]+1])
-    plt.ylim([-1,grid_shape[1]+1])
-
-    plt.show()
+    axes.set_xlim([-1,grid_shape[0]+1])
+    axes.set_ylim([-1,grid_shape[1]+1])

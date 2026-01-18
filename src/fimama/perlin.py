@@ -24,7 +24,7 @@ def perlin_map(
                 base=42
             )
 
-    # # Normalize terrain values to 0–1
-    # normalized_terrain = (terrain - terrain.min()) / (terrain.max() - terrain.min())
+    # Normalize terrain values to 0–1
+    normalized_terrain = (terrain - terrain.min()) / (terrain.max() - terrain.min())
 
-    return terrain
+    return normalized_terrain
