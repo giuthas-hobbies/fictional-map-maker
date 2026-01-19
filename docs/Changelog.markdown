@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Heightmap generation with Perlin noise from pnoise2.
+- Heightmap generation with Perlin noise from the `noise` package.
 
 
 ## [0.1.2] - 2026-01-15
