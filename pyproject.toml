@@ -12,8 +12,10 @@ dependencies = [
     "matplotlib>=3.10.8",
     "noise>=1.2.2",
     "numpy>=2.4.1",
+    "pydantic>=2.12.5",
     "pylint-venv>=3.0.4",
     "pyqt6>=6.10.2",
+    "pyyaml>=6.0.3",
     "scipy>=1.17.0",
 ]
 
