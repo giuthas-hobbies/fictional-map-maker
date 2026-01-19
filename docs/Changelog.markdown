@@ -42,11 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Highlights
 
-- Random heightmap instead of just random cell values.
+- Random Perlin noise heightmap instead of just random cell values.
 
 ### Added
 
-- Heightmap generation with ???.
+- Heightmap generation with Perlin noise from pnoise2.
 
 
 ## [0.1.2] - 2026-01-15
