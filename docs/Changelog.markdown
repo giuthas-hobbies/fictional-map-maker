@@ -38,6 +38,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Erosion/hydrology modelling with differentiation for different terrain types
   would be nice.
 
+
+## [0.4.0] - 2026-01-21
+
+### Highlights
+
+- Config file for map generation parameters.
+
+### Added
+
+- Config file for map generation parameters.
+  - For now this is implemented as a .yaml file read in simple mode (no fancy
+    object parsing) and then parsed into a proper config object with Pydantic.
+  - As we are still for the foreseeable future in versions before 1.0, and
+    therefore in alpha/beta stages, this implementation like everything else may change in compatibility breaking ways between minor versions.
+
+### Fixed 
+
+- The colormap is now a package resource so will be included in installations.
+
+
 ## [0.3.0] - 2026-01-21
 
 ### Highlights
