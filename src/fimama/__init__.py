@@ -1,12 +1,11 @@
 import matplotlib
-matplotlib.use('qtagg')
 import matplotlib.pyplot as plt
-
 import numpy as np
 
 from fimama.perlin import perlin_map
 from fimama.voronoi import voronoi_map
 
+matplotlib.use('qtagg')
 
 def main() -> None:
     # plot
@@ -18,8 +17,15 @@ def main() -> None:
     height = 200
     terrain = perlin_map(width=width, height=height)
     # terrain = np.arange(width*height).reshape((width,height))
-    voronoi_map(fig=fig, axes=ax1, heightmap=terrain)
+
+    # Read the colormap
+    tmp = []
+    for row in np.loadtxt( "geo-smooth.gpf" ):
+        tmp.append( [ row[0], row[1:4] ] )
+    colormap = matplotlib.colors.LinearSegmentedColormap.from_list( "geo-smooth", tmp )
+
+    voronoi_map(fig=fig, axes=ax1, heightmap=terrain, colormap=colormap)
 
     # Colored elevation map
-    ax2.imshow(X=terrain, cmap='terrain')
+    ax2.imshow(X=terrain, cmap=colormap)
     plt.show()

@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.collections import PatchCollection
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Polygon
 
 from scipy.spatial import Voronoi, voronoi_plot_2d
@@ -11,8 +12,11 @@ def voronoi_map(
     axes: Axes,
     fig,
     heightmap: np.ndarray = None,
-    config = None
+    colormap: LinearSegmentedColormap = None,
+    config = None,
     ):
+    if colormap is None:
+        colormap = "terrain"
 
     np.random.seed(1234)
     if heightmap is not None:
@@ -71,7 +75,7 @@ def voronoi_map(
     # ic(region_to_polygon[1:])
     # ic(voronoi.point_region)
     # ic(regions_to_points)
-    poly_collection = PatchCollection(patches=polygons, cmap="terrain")
+    poly_collection = PatchCollection(patches=polygons, cmap=colormap)
 
     poly_collection.set_array(heights)
     axes.add_collection(poly_collection)
