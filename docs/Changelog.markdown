@@ -38,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Erosion/hydrology modelling with differentiation for different terrain types
   would be nice.
 
+## [0.3.0] - 2026-01-21
+
+### Highlights
+
+- Better colormap from [Philipp K. Janert](https://janert.me/blog/2022/the-diamond-square-algorithm-for-terrain-generation/).
+
+### Added
+
+- Better colormap which differentiates between land and water.
+
+
 ## [0.2.0] - 2026-01-18
 
 ### Highlights
