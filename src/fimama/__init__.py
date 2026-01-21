@@ -14,8 +14,8 @@ def main() -> None:
     ax1.set_aspect('equal', 'box')
     ax2.set_aspect('equal', 'box')
 
-    width = 300
-    height = 300
+    width = 200
+    height = 200
     terrain = perlin_map(width=width, height=height)
     # terrain = np.arange(width*height).reshape((width,height))
     voronoi_map(fig=fig, axes=ax1, heightmap=terrain)
