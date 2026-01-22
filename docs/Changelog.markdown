@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- logging
+- better command line interface
 * Make the maps extendable.
   * This includes continuing a map from one or more sides and
   * Creating submaps/overmaps with larger/smaller scales.
@@ -36,6 +38,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   would be nice.
 - Later on map configuration in the gui and saveable/loadable to/from a
       file.
+
+
+## [0.5.0] - 2026-01-22
+
+### Highlights
+
+- Docstrings and automated documentation generation.
+
+### Added
+
+- Automated documentation generation and the documentation itself.
+
+### Fixed
+
+- Wrote docstrings for all functions, methods and classes.
 
 
 ## [0.4.1] - 2026-01-22
