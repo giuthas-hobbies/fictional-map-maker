@@ -1,3 +1,6 @@
+
+from importlib.resources import path as resource_path
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,6 +9,7 @@ from fimama.perlin import perlin_map
 from fimama.voronoi import voronoi_map
 
 matplotlib.use('qtagg')
+
 
 def main() -> None:
     # plot
@@ -19,10 +23,12 @@ def main() -> None:
     # terrain = np.arange(width*height).reshape((width,height))
 
     # Read the colormap
-    tmp = []
-    for row in np.loadtxt( "dark-atlas.gpf" ):
-        tmp.append( [ row[0], row[1:4] ] )
-    colormap = matplotlib.colors.LinearSegmentedColormap.from_list( "dark-atlas", tmp )
+    anchor='fimama.resources'
+    with resource_path(anchor, "dark-atlas.gpf") as colormap_path:
+        tmp = []
+        for row in np.loadtxt(colormap_path):
+            tmp.append( [ row[0], row[1:4] ] )
+        colormap = matplotlib.colors.LinearSegmentedColormap.from_list( "dark-atlas", tmp )
 
     voronoi_map(fig=fig, axes=ax1, heightmap=terrain, colormap=colormap)
 
