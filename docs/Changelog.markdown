@@ -38,10 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       file.
 
 
-## [0.4.1] - 2026-01-22
+## [0.4.2] - 2026-01-22
 
 ### Highlights
 
+- Fixed Changelog to make release run work.
 - The content that should have been in v0.4.0.
 - Config file for map generation parameters.
 - Second colormap with darker colours.
@@ -58,9 +59,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed 
 
 - The colormaps are now package resources so will be included in installations.
+- Fixed Changelog to make release run work.
 
 
 ## [0.4.1] - 2026-01-22
+
+### Highlights
+
+- Broken release due to Changelog heading conflict.
+
+
+## [0.4.0] - 2026-01-22
 
 ### Highlights
 
