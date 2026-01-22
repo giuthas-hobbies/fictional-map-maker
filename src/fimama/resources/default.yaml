@@ -1,10 +1,9 @@
-world_parameters:
-  - height: 200
-  - width: 200
-  - generator: 'perlin'
-  - perlin_parameters:
-      scale: 100.0
-      octaves: 6
-      persistence: 0.5
-      lacunarity: 2.0
-      base: 42
+height: 200
+width: 200
+generator: 'perlin'
+perlin_parameters:
+    scale: 100.0
+    octaves: 6
+    persistence: 0.5
+    lacunarity: 2.0
+    base: 42
