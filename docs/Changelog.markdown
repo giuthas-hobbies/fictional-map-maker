@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed 
 
-- The colormap is now a package resource so will be included in installations.
+- The colormaps are now package resources so will be included in installations.
 
 
 ## [0.3.0] - 2026-01-21
