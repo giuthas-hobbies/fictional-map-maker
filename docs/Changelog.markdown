@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Highlights
 
 - Config file for map generation parameters.
+- Second colormap with darker colours.
 
 ### Added
 
@@ -52,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     object parsing) and then parsed into a proper config object with Pydantic.
   - As we are still for the foreseeable future in versions before 1.0, and
     therefore in alpha/beta stages, this implementation like everything else may change in compatibility breaking ways between minor versions.
+- Second color map with darker colours than the first. 
 
 ### Fixed 
 
