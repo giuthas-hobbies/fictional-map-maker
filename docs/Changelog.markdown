@@ -25,9 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Map configuration from a file.
-    - Later on map configuration in the gui and saveable/loadable to/from a
-      file.
 * Make the maps extendable.
   * This includes continuing a map from one or more sides and
   * Creating submaps/overmaps with larger/smaller scales.
@@ -37,12 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     to use this for mapping a whole planet.
 * Erosion/hydrology modelling with differentiation for different terrain types
   would be nice.
+- Later on map configuration in the gui and saveable/loadable to/from a
+      file.
 
 
-## [0.4.0] - 2026-01-21
+## [0.4.1] - 2026-01-22
 
 ### Highlights
 
+- The content that should have been in v0.4.0.
 - Config file for map generation parameters.
 - Second colormap with darker colours.
 
@@ -58,6 +58,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed 
 
 - The colormaps are now package resources so will be included in installations.
+
+
+## [0.4.1] - 2026-01-22
+
+### Highlights
+
+- Mistaken release with no actual updates.
 
 
 ## [0.3.0] - 2026-01-21
