@@ -1,13 +1,12 @@
 import numpy as np
 from noise import pnoise2
 
+from .configuration import PerlinParameters
+
 def perlin_map(
-    width = 200,
-    height = 200,
-    scale = 100.0,
-    octaves = 6,
-    persistence = 0.5,
-    lacunarity = 2.0,
+    width: int,
+    height: int,
+    params: PerlinParameters
 ) -> np.ndarray:
     """
 
@@ -54,14 +53,14 @@ def perlin_map(
     for i in range(height):
         for j in range(width):
             terrain[i][j] = pnoise2(
-                i / scale,
-                j / scale,
-                octaves=octaves,
-                persistence=persistence,
-                lacunarity=lacunarity,
+                i / params.scale,
+                j / params.scale,
+                octaves=params.octaves,
+                persistence=params.persistence,
+                lacunarity=params.lacunarity,
                 repeatx=width,
                 repeaty=height,
-                base=41
+                base=params.base
             )
 
     # Normalize terrain values to 0–1
