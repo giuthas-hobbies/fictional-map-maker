@@ -11,18 +11,7 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from .configuration import VoronoiConfiguration
 
 
-def voronoi_map(
-    axes: Axes,
-    fig,
-    heightmap: np.ndarray = None,
-    colormap: LinearSegmentedColormap = None,
-    config: VoronoiConfiguration = None,
-):
-    if colormap is None:
-        colormap = "terrain"
-    if config is None:
-        config = VoronoiConfiguration()
-
+def generate_voronoi_map(heightmap: np.ndarray | None = None):
     np.random.seed(1234)
     if heightmap is not None:
         grid_shape = (heightmap.shape[0] - 1, heightmap.shape[1] - 1, )
@@ -47,6 +36,39 @@ def voronoi_map(
 
     # compute Voronoi tessellation
     voronoi = Voronoi(points)
+    return voronoi, points, dummy_points, grid_shape
+
+
+def voronoi_map(
+    axes: Axes,
+    fig,
+    heightmap: np.ndarray = None,
+    colormap: LinearSegmentedColormap = None,
+    config: VoronoiConfiguration = None,
+):
+    """
+    Plot a voronoi heightmap.
+
+    Parameters
+    ----------
+    axes : Axes
+        axes to plot on
+    fig : _type_
+        Figure we are plotting into. Used for adding a colorbar.
+    heightmap : np.ndarray, optional
+        The heightmap, by default None
+    colormap : LinearSegmentedColormap, optional
+        _description_, by default None
+    config : VoronoiConfiguration, optional
+        _description_, by default None
+    """
+    if colormap is None:
+        colormap = "terrain"
+    if config is None:
+        config = VoronoiConfiguration()
+
+    voronoi, points, dummy_points, grid_shape = generate_voronoi_map(
+        heightmap=heightmap)
 
     if config.plot_voronoi_grid:
         voronoi_plot_2d(
