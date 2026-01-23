@@ -8,12 +8,10 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "icecream>=2.1.9",
     "matplotlib>=3.10.8",
     "noise>=1.2.2",
     "numpy>=2.4.1",
     "pydantic>=2.12.5",
-    "pylint-venv>=3.0.4",
     "pyqt6>=6.10.2",
     "pyyaml>=6.0.3",
     "scipy>=1.17.0",
@@ -26,14 +24,9 @@ fimama = "fimama:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.pylint.MAIN]
-init-hook = """
-try: import pylint_venv
-except ImportError: pass
-else: pylint_venv.inithook()
-"""
-
 [dependency-groups]
 dev = [
+    "icecream>=2.1.10",
+    "licenseheaders>=0.8.8",
     "pdoc>=16.0.0",
 ]
