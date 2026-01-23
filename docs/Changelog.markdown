@@ -25,8 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- logging
-- better command line interface
 * Make the maps extendable.
   * This includes continuing a map from one or more sides and
   * Creating submaps/overmaps with larger/smaller scales.
@@ -38,6 +36,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   would be nice.
 - Later on map configuration in the gui and saveable/loadable to/from a
       file.
+
+
+## [0.6.0] - 2026-01-25
+
+### Highlights
+
+- Command line interface update with click.
+- Logging.
+
+### Added
+
+- Click for parsing command line commands.
+- Logging across the files.
 
 
 ## [0.5.0] - 2026-01-23
