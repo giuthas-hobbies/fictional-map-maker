@@ -16,8 +16,23 @@ matplotlib.use('qtagg')
 
 
 def plot_map(
-    heightmap: np.ndarray, colormap: LinearSegmentedColormap
+    heightmap: np.ndarray, colormap: LinearSegmentedColormap,
 ):
+    """
+    Plot a heightmap as a field of Voronoi cells.
+
+    Parameters
+    ----------
+    heightmap : np.ndarray
+        Heightmap to plot
+    colormap : LinearSegmentedColormap
+        Colormap to use in the plotting.
+
+    Returns
+    -------
+    tuple[matplotlib.figure.Figure, matplotlib.Axes.axes]
+        The containing Figure and the Axes the map was plotted on.
+    """
     fig, (ax1) = plt.subplots(nrows=1, ncols=1, layout="constrained")
     ax1.set_aspect('equal', 'box')
     # ax2.set_aspect('equal', 'box')
@@ -34,6 +49,20 @@ def plot_map(
 def build_map(
     config_path: Path | None = None
 ) -> tuple[np.ndarray, LinearSegmentedColormap]:
+    """
+    Build a map based on settings in the configuration file.
+
+    Parameters
+    ----------
+    config_path : Path | None, optional
+        Path to the configuration file. If this is None the default parameters
+        from the fimama package will be loaded, by default None.
+
+    Returns
+    -------
+    tuple[np.ndarray, LinearSegmentedColormap]
+        The heightmap and the colormap.
+    """
     anchor = 'fimama.resources'
 
     # read the config
