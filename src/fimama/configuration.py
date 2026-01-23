@@ -8,11 +8,6 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 _logger = logging.getLogger('patkit.base_model_extensions')
 
-# TODO: write a method that will dump the model in a dict with human readable
-# keys. ie. replace underscores with spaces. then make another one that will
-# convert in the other direction for the dict to be feedable to inheritors of
-# UpdatableBaseModel.
-
 
 class FimamaModel(BaseModel):
     """
@@ -78,6 +73,31 @@ class FimamaModel(BaseModel):
 
 
 class PerlinParameters(FimamaModel):
+    """
+    Parameters for generating a heightmap with Perlin noise.
+
+    Apart from `scale` these are parameters of the `noise.pnoise2` function.
+
+    Parameters
+    ----------
+        scale : float
+            Factor to zoom into the noise field by. Small values will produce a
+            very densely noisy map, by default 100.0.
+        octaves: int
+            The number of passes for generating fractional Brownian motion
+            (fBm) noise, by default 6.
+        persistence: float
+            The amplitude of each successive octave relative to the one below
+            it. Note the amplitude of the first pass is always 1.0. Defaults to
+            0.5 (each higher octave's amplitude is halved).
+        lacunarity: float
+            The frequency of each successive octave relative to the one below
+            it, similar to persistence. Defaults to 2.0.
+        base: int
+            Fixed offset for the input coordinates. Useful for generating
+            different noise textures with the same repeat interval, by default
+            42.
+    """
     scale: float = 100.0
     octaves: int = 6
     persistence: float = 0.5
@@ -86,6 +106,28 @@ class PerlinParameters(FimamaModel):
 
 
 class VoronoiConfiguration(FimamaModel):
+    """
+    Configuration for plotting elements of the Voronoi grid.
+
+    Note that these parameters do not affect drawing the Voronoi cell polygons.
+    Their plotting is controlled by configuration for drawing the heightmap.
+
+    Parameters
+    ----------
+        plot_voronoi_grid: bool
+            Should any part of the grid be plotted, if set to False, none of
+            the elements get plotted regardless of the parameter values, by
+            default False.
+        show_ridges: bool
+            Should the perimeter of the polygons - the Voronoi ridges - be
+            plotted, by default True.
+        show_vertices: bool
+            Should the vertices, or intersections of the ridges, be plotted, by
+            default False.
+        show_points: bool
+            Should the points that the Voronoi grid is based on be plotted, by
+            default False.
+    """
     plot_voronoi_grid: bool = False
     show_ridges: bool = True
     show_vertices: bool = False
@@ -93,6 +135,27 @@ class VoronoiConfiguration(FimamaModel):
 
 
 class MapConfiguration(FimamaModel):
+    """
+    Map generation configuration.
+
+    Parameters
+    ----------
+        height: int
+            Height of the map in cells, by default 125.
+        width: int
+            Width of the map in cells, by default 200.
+        generator: str
+            Which generator to use for the heightmap, by default "perlin".
+        colormap_name: str
+            Name of the colormap to use for displaying the heightmap, by
+            default "dark-atlas".
+        perlin_parameters: `PerlinParameters` | None
+            Parameters for generating a heightmap with Perlin noise, by default
+            None.
+        voronoi_configuration: `VoronoiConfiguration` | None
+            Parameters for plotting the Voronoi grid (not the voronoi polygons,
+            but rather associated edges and points), by default None.
+    """
     height: int = 125
     width: int = 200
     generator: str = "perlin"
