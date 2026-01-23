@@ -11,7 +11,7 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from .configuration import VoronoiConfiguration
 
 
-def generate_voronoi_map(heightmap: np.ndarray | None = None):
+def _generate_voronoi_grid(heightmap: np.ndarray | None = None):
     np.random.seed(1234)
     if heightmap is not None:
         grid_shape = (heightmap.shape[0] - 1, heightmap.shape[1] - 1, )
@@ -67,7 +67,7 @@ def voronoi_map(
     if config is None:
         config = VoronoiConfiguration()
 
-    voronoi, points, dummy_points, grid_shape = generate_voronoi_map(
+    voronoi, points, dummy_points, grid_shape = _generate_voronoi_grid(
         heightmap=heightmap)
 
     if config.plot_voronoi_grid:
