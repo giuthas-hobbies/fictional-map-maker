@@ -32,3 +32,8 @@ try: import pylint_venv
 except ImportError: pass
 else: pylint_venv.inithook()
 """
+
+[dependency-groups]
+dev = [
+    "pdoc>=16.0.0",
+]
