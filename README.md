@@ -7,8 +7,9 @@ I'll start with a Voronoi cell based heightmap and see how much I can be
 bothered to work on this.
 
 If things do progress I do have the following aims:
-* The [Changelog](docs/Changelog.markdown) includes some more specific
-  potential features
+* The
+  [Changelog](https://github.com/giuthas-hobbies/fictional-map-maker/docs/Changelog.markdown)
+  includes some more specific potential features
 * I have more ideas than are listed there, but time is limited.
 
 Some general principles:

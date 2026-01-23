@@ -48,7 +48,7 @@ class FimamaModel(BaseModel):
             input_string = None
         return input_string
 
-    def update(self, data: dict) -> 'UpdatableBaseModel':
+    def update(self, data: dict) -> 'FimamaModel':
         """
         Update the BaseModel with the contents of data and validate.
 
@@ -58,7 +58,7 @@ class FimamaModel(BaseModel):
         Parameters
         ----------
         data : dict
-            Only valid key, value pairs are accepted. 
+            Only valid key, value pairs are accepted.
 
         Returns
         -------
@@ -85,9 +85,17 @@ class PerlinParameters(FimamaModel):
     base: int = 42
 
 
+class VoronoiConfiguration(FimamaModel):
+    plot_voronoi_grid: bool = False
+    show_ridges: bool = True
+    show_vertices: bool = False
+    show_points: bool = False
+
+
 class MapConfiguration(FimamaModel):
     height: int = 125
     width: int = 200
     generator: str = "perlin"
-    colormap_name : str = "dark-atlas"
-    perlin_parameters : PerlinParameters | None = None
+    colormap_name: str = "dark-atlas"
+    perlin_parameters: PerlinParameters | None = None
+    voronoi_configuration: VoronoiConfiguration | None = None

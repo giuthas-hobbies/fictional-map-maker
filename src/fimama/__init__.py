@@ -1,8 +1,10 @@
 
 from importlib.resources import path as resource_path
+from pathlib import Path
 
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 import yaml
 
@@ -13,9 +15,26 @@ from fimama.voronoi import voronoi_map
 matplotlib.use('qtagg')
 
 
-def main() -> None:
-    # plot
-    anchor='fimama.resources'
+def plot_map(
+    heightmap: np.ndarray, colormap: LinearSegmentedColormap
+):
+    fig, (ax1) = plt.subplots(nrows=1, ncols=1, layout="constrained")
+    ax1.set_aspect('equal', 'box')
+    # ax2.set_aspect('equal', 'box')
+
+    voronoi_map(fig=fig, axes=ax1, heightmap=heightmap, colormap=colormap)
+
+    # Colored elevation map
+    # ax2.imshow(X=terrain, cmap=colormap)
+    # plt.tight_layout()
+    plt.show()
+    return fig, ax1
+
+
+def build_map(
+    config_path: Path | None = None
+) -> tuple[np.ndarray, LinearSegmentedColormap]:
+    anchor = 'fimama.resources'
 
     # read the config
     with resource_path(anchor, "default.yaml") as config_path:
@@ -23,24 +42,24 @@ def main() -> None:
             raw_config = yaml.safe_load(config_file)
             config = MapConfiguration(**raw_config)
 
-    terrain = perlin_map(
-        width=config.width, height=config.height, params=config.perlin_parameters).T
+    heightmap = perlin_map(
+        width=config.width,
+        height=config.height,
+        params=config.perlin_parameters)
+    heightmap = heightmap.T
     # terrain = np.arange(width*height).reshape((width,height))
 
     # Read the colormap
     with resource_path(anchor, f"{config.colormap_name}.gpf") as colormap_path:
         tmp = []
         for row in np.loadtxt(colormap_path):
-            tmp.append( [ row[0], row[1:4] ] )
-        colormap = matplotlib.colors.LinearSegmentedColormap.from_list(config.colormap_name, tmp)
+            tmp.append([row[0], row[1:4]])
+        colormap = LinearSegmentedColormap.from_list(
+            config.colormap_name, tmp)
 
-    fig, (ax1) = plt.subplots(nrows=1, ncols=1, layout="constrained")
-    ax1.set_aspect('equal', 'box')
-    # ax2.set_aspect('equal', 'box')
+    return heightmap, colormap
 
-    voronoi_map(fig=fig, axes=ax1, heightmap=terrain, colormap=colormap)
 
-    # Colored elevation map
-    # ax2.imshow(X=terrain, cmap=colormap)
-    # plt.tight_layout()
-    plt.show()
+def main() -> None:
+    heightmap, colormap = build_map()
+    fig, ax1 = plot_map(heightmap=heightmap, colormap=colormap)
