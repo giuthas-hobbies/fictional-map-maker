@@ -15,9 +15,11 @@ def perlin_map(
     Parameters
     ----------
     width : int, optional
-        _description_, by default 200
+        Width of the heightmap in cells.
     height : int, optional
-        _description_, by default 200
+        Height of the heightmap in cells.
+    params : PerlinParameters
+        Parameters for generating the Perlin noise.
 
     Returns
     -------
