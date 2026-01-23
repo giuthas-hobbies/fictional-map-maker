@@ -18,7 +18,7 @@ def perlin_map(
         Width of the heightmap in cells.
     height : int, optional
         Height of the heightmap in cells.
-    params : PerlinParameters
+    params : `PerlinParameters`
         Parameters for generating the Perlin noise.
 
     Returns

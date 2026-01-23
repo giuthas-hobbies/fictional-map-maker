@@ -4,6 +4,7 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.collections import PatchCollection
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
 
 from scipy.spatial import Voronoi, voronoi_plot_2d
@@ -41,7 +42,7 @@ def _generate_voronoi_grid(heightmap: np.ndarray | None = None):
 
 def voronoi_map(
     axes: Axes,
-    fig,
+    fig: Figure,
     heightmap: np.ndarray = None,
     colormap: LinearSegmentedColormap = None,
     config: VoronoiConfiguration = None,
@@ -53,14 +54,14 @@ def voronoi_map(
     ----------
     axes : Axes
         axes to plot on
-    fig : _type_
+    fig : Figure
         Figure we are plotting into. Used for adding a colorbar.
     heightmap : np.ndarray, optional
         The heightmap, by default None
     colormap : LinearSegmentedColormap, optional
-        _description_, by default None
-    config : VoronoiConfiguration, optional
-        _description_, by default None
+        Colormap for the displaying the heightmap, by default None
+    config : `VoronoiConfiguration`, optional
+        Configuration for plotting the Voronoi grid, by default None
     """
     if colormap is None:
         colormap = "terrain"

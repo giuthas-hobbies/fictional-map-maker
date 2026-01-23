@@ -10,7 +10,7 @@ def main():
     """
     Generate the docs for fimama.
 
-    Run with `uv run pre-deployment/generate_docs.py` at project root.
+    Run with `uv run pre-deployment/generate_api_docs.py` at project root.
     """
     source_path = Path("src/fimama/")
     pdoc.render.configure(docformat="numpy", )
