@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "click>=8.3.1",
     "matplotlib>=3.10.8",
     "noise>=1.2.2",
     "numpy>=2.4.1",
