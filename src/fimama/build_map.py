@@ -1,5 +1,6 @@
 from importlib.resources import path as resource_path
 from pathlib import Path
+from warnings import Error
 
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
@@ -41,6 +42,10 @@ def build_map(
         params=config.perlin_parameters)
     heightmap = heightmap.T
     # terrain = np.arange(width*height).reshape((width,height))
+
+    # TODO 0.6: Make this more helpful by including a list of recognised names.
+    if config.colormap_name not in ColormapFiles:
+        raise Error(f"Unrecognised colormap name {config.colormap_name}.")
 
     # Read the colormap
     with resource_path(
