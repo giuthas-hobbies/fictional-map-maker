@@ -5,6 +5,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 import yaml
 
+from fimama.constants import RESOURCE_ANCHOR
 from fimama.configuration import MapConfiguration
 from fimama.perlin import perlin_map
 
@@ -26,10 +27,8 @@ def build_map(
     tuple[np.ndarray, LinearSegmentedColormap]
         The heightmap and the colormap.
     """
-    anchor = 'fimama.resources'
-
     # read the config
-    with resource_path(anchor, "default.yaml") as config_path:
+    with resource_path(RESOURCE_ANCHOR, "default.yaml") as config_path:
         with open(config_path, 'r', encoding='utf-8') as config_file:
             raw_config = yaml.safe_load(config_file)
             config = MapConfiguration(**raw_config)
@@ -42,7 +41,9 @@ def build_map(
     # terrain = np.arange(width*height).reshape((width,height))
 
     # Read the colormap
-    with resource_path(anchor, f"{config.colormap_name}.gpf") as colormap_path:
+    with resource_path(
+        RESOURCE_ANCHOR, f"{config.colormap_name}.gpf"
+    ) as colormap_path:
         tmp = []
         for row in np.loadtxt(colormap_path):
             tmp.append([row[0], row[1:4]])

@@ -1,10 +1,22 @@
+from importlib.resources import path as resource_path
+import json
+import logging.config
 
-from fimama.cli import run_cli
 import matplotlib
 
+from fimama.cli import run_cli
+from fimama.constants import LOG_CONFIG, RESOURCE_ANCHOR
 matplotlib.use('qtagg')
 
 
-# def main() -> None:
-#     heightmap, colormap = build_map()
-#     fig, ax1 = plot_map(heightmap=heightmap, colormap=colormap)
+# Load logging config from json file.
+with resource_path(RESOURCE_ANCHOR, LOG_CONFIG) as configuration_path:
+    with open(configuration_path, 'r', encoding='utf-8') as configuration_file:
+        config_dict = json.load(configuration_file)
+        logging.config.dictConfig(config_dict)
+
+# Create the module logger.
+_fimama_logger = logging.getLogger('fimama')
+
+# Log that the logger was configured.
+_fimama_logger.info('Completed configuring logger.')

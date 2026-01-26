@@ -38,12 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       file.
 
 
-## [0.6.0] - 2026-01-25
+## [0.6.0] - 2026-01-26
 
 ### Highlights
 
 - Command line interface update with click.
-- Logging.
+- Logging and logging configuration.
 
 ### Added
 
