@@ -5,7 +5,9 @@ from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 import yaml
 
-from fimama.constants import RESOURCE_ANCHOR
+from fimama.constants import (
+    DEFAULT_ENCODING, RESOURCE_ANCHOR, ColormapFiles
+)
 from fimama.configuration import MapConfiguration
 from fimama.perlin import perlin_map
 
@@ -28,8 +30,8 @@ def build_map(
         The heightmap and the colormap.
     """
     # read the config
-    with resource_path(RESOURCE_ANCHOR, "default.yaml") as config_path:
-        with open(config_path, 'r', encoding='utf-8') as config_file:
+    with resource_path(RESOURCE_ANCHOR, ) as config_path:
+        with open(config_path, 'r', encoding=DEFAULT_ENCODING) as config_file:
             raw_config = yaml.safe_load(config_file)
             config = MapConfiguration(**raw_config)
 

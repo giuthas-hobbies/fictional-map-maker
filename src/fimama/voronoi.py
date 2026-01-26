@@ -12,9 +12,6 @@ from scipy.spatial import Voronoi, voronoi_plot_2d
 from .configuration import VoronoiConfiguration
 
 
-print(__name__)
-
-
 def _generate_voronoi_grid(heightmap: np.ndarray | None = None):
     np.random.seed(1234)
     if heightmap is not None:
