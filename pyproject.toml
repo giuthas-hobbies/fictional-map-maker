@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "click>=8.3.1",
+    "click-default-group>=1.2.4",
     "matplotlib>=3.10.8",
     "noise>=1.2.2",
     "numpy>=2.4.1",
@@ -19,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-fimama = "fimama:main"
+fimama = "fimama:run_cli"
 
 [build-system]
 requires = ["hatchling"]
