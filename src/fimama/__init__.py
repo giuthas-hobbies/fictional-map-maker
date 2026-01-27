@@ -16,7 +16,7 @@ with resource_path(RESOURCE_ANCHOR, LOG_CONFIG) as configuration_path:
         logging.config.dictConfig(config_dict)
 
 # Create the module logger.
-_fimama_logger = logging.getLogger('fimama')
+_logger = logging.getLogger('fimama')
 
 # Log that the logger was configured.
-_fimama_logger.info('Completed configuring logger.')
+_logger.info('Completed configuring logger.')

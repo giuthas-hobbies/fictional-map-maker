@@ -52,7 +52,7 @@ def generate_from_file(path: Path | None):
 
 
 @click.group(
-    cls=DefaultGroup, default='open', default_if_no_args=False)
+    cls=DefaultGroup, default='run', default_if_no_args=True)
 @click.pass_context
 @click.option('--verbosity', '-v', default=1, show_default=True)
 @click.version_option()

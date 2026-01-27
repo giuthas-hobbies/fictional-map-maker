@@ -6,7 +6,7 @@ import logging
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-_logger = logging.getLogger('fimama.configuration')
+_logger = logging.getLogger(__name__)
 
 
 class FimamaModel(BaseModel):

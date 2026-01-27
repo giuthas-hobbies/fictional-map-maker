@@ -1,4 +1,4 @@
-# from icecream import ic
+import logging
 
 import numpy as np
 from matplotlib.axes import Axes
@@ -10,6 +10,8 @@ from matplotlib.patches import Polygon
 from scipy.spatial import Voronoi, voronoi_plot_2d
 
 from .configuration import VoronoiConfiguration
+
+_logger = logging.getLogger(__name__)
 
 
 def _generate_voronoi_grid(heightmap: np.ndarray | None = None):
@@ -32,6 +34,9 @@ def _generate_voronoi_grid(heightmap: np.ndarray | None = None):
     # add 4 distant dummy points
     dummy_points = []
     dummy_points = [[999, 999], [-999, 999], [999, -999], [-999, -999]]
+    _logger.debug(
+        f"Using dummy points {dummy_points} in voronoi grid generation."
+    )
     base_points = np.append(base_points, dummy_points, axis=0)
     points = np.append(points, dummy_points, axis=0)
 

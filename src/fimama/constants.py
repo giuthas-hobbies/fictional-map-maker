@@ -1,5 +1,6 @@
-from enum import Enum
 from importlib.metadata import version
+
+from fimama.extended_external_classes import ListablePrintableEnum
 
 # Program setup
 RESOURCE_ANCHOR = 'fimama.resources'
@@ -18,11 +19,11 @@ FIMAMA_CONFIG_DIR = "~/.fimama/"
 DEFAULT_WORLD_CONFIG = "default.yaml"
 
 
-class ColormapFiles(Enum):
+class ColormapFiles(ListablePrintableEnum):
     """
     Probe type codes saved by AAA.
 
     These are probe models, not 'fan' vs 'linear' or some such thing.
     """
-    DARK_ATLAS = "dark-atlas.gpf"
-    LIGHT_ATLAS = "light-atlas.gpf"
+    DARK_ATLAS = "dark-atlas"
+    LIGHT_ATLAS = "light-atlas"

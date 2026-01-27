@@ -1,16 +1,19 @@
 from importlib.resources import path as resource_path
+import logging
 from pathlib import Path
-from warnings import Error
 
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
+import sys
 import yaml
 
 from fimama.constants import (
-    DEFAULT_ENCODING, RESOURCE_ANCHOR, ColormapFiles
+    DEFAULT_WORLD_CONFIG, DEFAULT_ENCODING, RESOURCE_ANCHOR, ColormapFiles
 )
 from fimama.configuration import MapConfiguration
 from fimama.perlin import perlin_map
+
+_logger = logging.getLogger(__name__)
 
 
 def build_map(
@@ -31,10 +34,13 @@ def build_map(
         The heightmap and the colormap.
     """
     # read the config
-    with resource_path(RESOURCE_ANCHOR, ) as config_path:
-        with open(config_path, 'r', encoding=DEFAULT_ENCODING) as config_file:
-            raw_config = yaml.safe_load(config_file)
-            config = MapConfiguration(**raw_config)
+    if config_path is None:
+        config_path = resource_path(RESOURCE_ANCHOR, DEFAULT_WORLD_CONFIG)
+
+    _logger.debug(f"Reading the config file from {config_path}.")
+    with open(config_path, 'r', encoding=DEFAULT_ENCODING) as config_file:
+        raw_config = yaml.safe_load(config_file)
+        config = MapConfiguration(**raw_config)
 
     heightmap = perlin_map(
         width=config.width,
@@ -43,14 +49,18 @@ def build_map(
     heightmap = heightmap.T
     # terrain = np.arange(width*height).reshape((width,height))
 
-    # TODO 0.6: Make this more helpful by including a list of recognised names.
     if config.colormap_name not in ColormapFiles:
-        raise Error(f"Unrecognised colormap name {config.colormap_name}.")
+        print(
+            f"Unrecognised colormap_name '{config.colormap_name}'.\n"
+            f"Valid names are {ColormapFiles.values()}."
+        )
+        sys.exit()
 
     # Read the colormap
     with resource_path(
         RESOURCE_ANCHOR, f"{config.colormap_name}.gpf"
     ) as colormap_path:
+        _logger.debug(f"Reading the colormap from {colormap_path}.")
         tmp = []
         for row in np.loadtxt(colormap_path):
             tmp.append([row[0], row[1:4]])

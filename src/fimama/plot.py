@@ -1,8 +1,12 @@
+import logging
+
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
 
 from fimama.voronoi import voronoi_map
+
+_logger = logging.getLogger(__name__)
 
 
 def plot_map(
@@ -27,10 +31,8 @@ def plot_map(
     ax1.set_aspect('equal', 'box')
     # ax2.set_aspect('equal', 'box')
 
+    _logger.info("Plotting the Voronoi cells")
     voronoi_map(fig=fig, axes=ax1, heightmap=heightmap, colormap=colormap)
 
-    # Colored elevation map
-    # ax2.imshow(X=terrain, cmap=colormap)
-    # plt.tight_layout()
     plt.show()
     return fig, ax1
