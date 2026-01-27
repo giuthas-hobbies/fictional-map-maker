@@ -8,7 +8,7 @@ bothered to work on this.
 
 If things do progress I do have the following aims:
 * The
-  [Changelog](https://github.com/giuthas-hobbies/fictional-map-maker/docs/Changelog.markdown)
+  [Changelog](https://github.com/giuthas-hobbies/fictional-map-maker/blob/main/docs/Changelog.markdown)
   includes some more specific potential features
 * I have more ideas than are listed there, but time is limited.
 
