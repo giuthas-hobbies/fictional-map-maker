@@ -6,8 +6,10 @@ from pathlib import Path
 
 import click
 from click_default_group import DefaultGroup
+import matplotlib.pyplot as plt
 
 from fimama.build_map import build_map
+from fimama.heightmap_editor import HeightmapEditor
 from fimama.plot import plot_map
 
 
@@ -49,6 +51,9 @@ def generate_from_file(path: Path | None):
     """
     heightmap, colormap = build_map(path)
     fig, ax1 = plot_map(heightmap=heightmap, colormap=colormap)
+    editor = HeightmapEditor(figure=fig, axes=ax1)
+    plt.show()
+    print(editor.x_values, editor.y_values)
 
 
 @click.group(

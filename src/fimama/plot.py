@@ -34,5 +34,4 @@ def plot_map(
     _logger.info("Plotting the Voronoi cells")
     voronoi_map(fig=fig, axes=ax1, heightmap=heightmap, colormap=colormap)
 
-    plt.show()
     return fig, ax1
