@@ -16,7 +16,7 @@ from fimama.perlin import perlin_map
 _logger = logging.getLogger(__name__)
 
 
-def build_map(
+def get_heightmap_and_colormap(
     config_path: Path | None = None
 ) -> tuple[np.ndarray, LinearSegmentedColormap]:
     """
