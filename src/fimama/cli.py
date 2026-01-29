@@ -9,8 +9,10 @@ from click_default_group import DefaultGroup
 import matplotlib.pyplot as plt
 
 from fimama.build_map import build_map
+from fimama.configuration import VoronoiConfiguration
 from fimama.heightmap_editor import HeightmapEditor
 from fimama.plot import plot_map
+from fimama.voronoi import FimamaMap
 
 
 @click.command(name="open")
@@ -50,7 +52,8 @@ def generate_from_file(path: Path | None):
     PATH to a `.yaml` file which contains the parameters for generating a map.
     """
     heightmap, colormap = build_map(path)
-    fig, ax1 = plot_map(heightmap=heightmap, colormap=colormap)
+    map = FimamaMap.make_map(heightmap=heightmap)
+    fig, ax1 = plot_map(map=map, colormap=colormap)
     editor = HeightmapEditor(figure=fig, axes=ax1)
     plt.show()
     print(editor.x_values, editor.y_values)
