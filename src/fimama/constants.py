@@ -21,9 +21,14 @@ DEFAULT_WORLD_CONFIG = "default.yaml"
 
 class ColormapFiles(ListablePrintableEnum):
     """
-    Probe type codes saved by AAA.
-
-    These are probe models, not 'fan' vs 'linear' or some such thing.
+    FIMAMA's own colormaps.
     """
     DARK_ATLAS = "dark-atlas"
     LIGHT_ATLAS = "light-atlas"
+
+
+class MapGenerator(ListablePrintableEnum):
+    """
+    Heightmap generation algorithm names.
+    """
+    PERLIN = "perlin"

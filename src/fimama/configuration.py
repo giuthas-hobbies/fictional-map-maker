@@ -6,6 +6,8 @@ import logging
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from fimama.constants import MapGenerator
+
 _logger = logging.getLogger(__name__)
 
 
@@ -158,7 +160,7 @@ class MapConfiguration(FimamaModel):
     """
     height: int = 125
     width: int = 200
-    generator: str = "perlin"
+    generator: MapGenerator = MapGenerator.PERLIN
     colormap_name: str = "dark-atlas"
     perlin_parameters: PerlinParameters | None = None
     voronoi_configuration: VoronoiConfiguration | None = None
