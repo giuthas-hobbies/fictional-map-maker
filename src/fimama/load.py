@@ -11,7 +11,6 @@ from fimama.constants import (
     DEFAULT_WORLD_CONFIG, DEFAULT_ENCODING, RESOURCE_ANCHOR, ColormapFiles
 )
 from fimama.configuration import MapConfiguration
-from fimama.perlin import perlin_map
 
 _logger = logging.getLogger(__name__)
 
@@ -31,11 +30,11 @@ def load_map_configuration(
     return config
 
 
-def get_heightmap_and_colormap(
-    config: MapConfiguration,
-) -> tuple[np.ndarray, LinearSegmentedColormap]:
+def get_colormap(
+    colormap_name: str,
+) -> LinearSegmentedColormap | str:
     """
-    Build a heightmap and get a colormap.
+    Get a colormap.
 
     Parameters
     ----------
@@ -45,32 +44,26 @@ def get_heightmap_and_colormap(
 
     Returns
     -------
-    tuple[np.ndarray, LinearSegmentedColormap]
-        The heightmap and the colormap.
+    LinearSegmentedColormap | str
+        Either the colormap or its name if a standard matplotlib map is called
+        for.
     """
-    heightmap = perlin_map(
-        width=config.width,
-        height=config.height,
-        params=config.perlin_parameters)
-    heightmap = heightmap.T
-    # terrain = np.arange(width*height).reshape((width,height))
-
-    if config.colormap_name not in ColormapFiles:
+    if colormap_name not in ColormapFiles:
         print(
-            f"Unrecognised colormap_name '{config.colormap_name}'.\n"
+            f"Unrecognised colormap_name '{colormap_name}'.\n"
             f"Valid names are {ColormapFiles.values()}."
         )
         sys.exit()
 
     # Read the colormap
     with resource_path(
-        RESOURCE_ANCHOR, f"{config.colormap_name}.gpf"
+        RESOURCE_ANCHOR, f"{colormap_name}.gpf"
     ) as colormap_path:
         _logger.debug(f"Reading the colormap from {colormap_path}.")
         tmp = []
         for row in np.loadtxt(colormap_path):
             tmp.append([row[0], row[1:4]])
         colormap = LinearSegmentedColormap.from_list(
-            config.colormap_name, tmp)
+            colormap_name, tmp)
 
-    return heightmap, colormap
+    return colormap
