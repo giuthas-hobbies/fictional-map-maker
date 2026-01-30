@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 
 
 def plot_map(
-    map: FimamaMap,
+    world_map: FimamaMap,
     colormap: LinearSegmentedColormap = None,
     config: VoronoiConfiguration = None,
 ) -> tuple[Figure, Axes]:
@@ -52,23 +52,23 @@ def plot_map(
 
     if config.plot_voronoi_grid:
         voronoi_plot_2d(
-            vor=map,
+            vor=world_map,
             ax=axes,
             show_vertices=config.show_vertices,
             show_points=config.show_points
         )
 
     # map regions to points
-    regions_to_points = np.argsort(map.point_region)
+    regions_to_points = np.argsort(world_map.point_region)
 
     # Polygon patches for the voronoi regions
     polygons = []
     polygon_index = 0
-    heights = np.zeros(len(map.points) - len(map.dummy_points))
-    heightmap = map.heightmap.flatten()
-    for i, region in enumerate(map.regions):
+    heights = np.zeros(len(world_map.points) - len(world_map.dummy_points))
+    heightmap = world_map.heightmap.flatten()
+    for i, region in enumerate(world_map.regions):
         if -1 not in region and len(region) > 0:
-            vertices = [map.vertices[i] for i in region]
+            vertices = [world_map.vertices[i] for i in region]
             polygon = Polygon(vertices, closed=True)
             polygons.append(polygon)
             # center = np.mean(polygon.get_xy(), axis=0)
@@ -95,7 +95,7 @@ def plot_map(
     fig.colorbar(poly_collection, ax=axes)
 
     # fix the range of axes
-    axes.set_xlim([-1, map.grid_shape[0]+1])
-    axes.set_ylim([-1, map.grid_shape[1]+1])
+    axes.set_xlim([-1, world_map.grid_shape[0]+1])
+    axes.set_ylim([-1, world_map.grid_shape[1]+1])
 
     return fig, axes

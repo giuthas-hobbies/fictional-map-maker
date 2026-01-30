@@ -16,23 +16,9 @@ from fimama.perlin import perlin_map
 _logger = logging.getLogger(__name__)
 
 
-def get_heightmap_and_colormap(
-    config_path: Path | None = None
-) -> tuple[np.ndarray, LinearSegmentedColormap]:
-    """
-    Build a map based on settings in the configuration file.
-
-    Parameters
-    ----------
-    config_path : Path | None, optional
-        Path to the configuration file. If this is None the default parameters
-        from the fimama package will be loaded, by default None.
-
-    Returns
-    -------
-    tuple[np.ndarray, LinearSegmentedColormap]
-        The heightmap and the colormap.
-    """
+def load_map_configuration(
+    config_path: Path | None = None,
+) -> MapConfiguration:
     # read the config
     if config_path is None:
         config_path = resource_path(RESOURCE_ANCHOR, DEFAULT_WORLD_CONFIG)
@@ -42,6 +28,26 @@ def get_heightmap_and_colormap(
         raw_config = yaml.safe_load(config_file)
         config = MapConfiguration(**raw_config)
 
+    return config
+
+
+def get_heightmap_and_colormap(
+    config: MapConfiguration,
+) -> tuple[np.ndarray, LinearSegmentedColormap]:
+    """
+    Build a heightmap and get a colormap.
+
+    Parameters
+    ----------
+    config : MapConfiguration
+        Configuration for building the heightmap and selecting or loading the
+        colormap.
+
+    Returns
+    -------
+    tuple[np.ndarray, LinearSegmentedColormap]
+        The heightmap and the colormap.
+    """
     heightmap = perlin_map(
         width=config.width,
         height=config.height,
