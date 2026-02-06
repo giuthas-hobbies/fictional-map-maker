@@ -62,9 +62,10 @@ def generate_from_file(path: Path | None):
         colormap=colormap,
         config=map_config.voronoi_configuration,
     )
-    editor = HeightmapEditor(figure=fig, axes=ax1)
+    editor = HeightmapEditor(figure=fig, axes=ax1, world_map=world_map)
     plt.show()
     print(editor.x_values, editor.y_values)
+    print(editor.x_indeces, editor.y_indeces)
 
 
 @click.group(

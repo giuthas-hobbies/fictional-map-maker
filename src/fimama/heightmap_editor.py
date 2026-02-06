@@ -1,20 +1,27 @@
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-import numpy as np
+
+from fimama.voronoi import FimamaMap
 
 
 class HeightmapEditor:
-    def __init__(self, figure: Figure, axes: Axes):
+    def __init__(self, figure: Figure, axes: Axes, world_map: FimamaMap):
         self.figure = figure
         self.axes = axes
+        self.world_map = world_map
         self.x_values = []
         self.y_values = []
+        self.x_indeces = []
+        self.y_indeces = []
         self.cid = figure.canvas.mpl_connect(
             'button_press_event', self.onclick)
 
     def onclick(self, event):
         self.x_values.append(event.xdata)
         self.y_values.append(event.ydata)
+        x, y = self.world_map.closest_point(event.xdata, event.ydata)
+        self.x_indeces.append(x)
+        self.y_indeces.append(y)
         # - calculate all euclidean distances between x,y and the voronoi
         # original points
         # - find argmin and you have the index of the original
