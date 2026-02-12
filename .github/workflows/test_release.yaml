@@ -14,7 +14,7 @@ env:
 jobs:
   details:
     runs-on: ubuntu-latest
-    # if: github.repository == 'giuthas-hobbies/fictional-map-maker/'
+    if: github.repository == 'giuthas-hobbies/fictional-map-maker'
     outputs:
       new_version: ${{ steps.release.outputs.new_version }}
       suffix: ${{ steps.release.outputs.suffix }}
