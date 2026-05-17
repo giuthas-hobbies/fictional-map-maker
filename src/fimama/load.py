@@ -1,4 +1,4 @@
-from importlib.resources import path as resource_path
+from importlib.resources import files, as_file
 import logging
 from pathlib import Path
 
@@ -20,7 +20,8 @@ def load_map_configuration(
 ) -> MapConfiguration:
     # read the config
     if config_path is None:
-        config_path = resource_path(RESOURCE_ANCHOR, DEFAULT_WORLD_CONFIG)
+        # Resolves to a traversable Path-like object
+        config_path = files(RESOURCE_ANCHOR).joinpath(DEFAULT_WORLD_CONFIG)
 
     _logger.debug(f"Reading the config file from {config_path}.")
     with open(config_path, 'r', encoding=DEFAULT_ENCODING) as config_file:
@@ -56,9 +57,8 @@ def get_colormap(
         sys.exit()
 
     # Read the colormap
-    with resource_path(
-        RESOURCE_ANCHOR, f"{colormap_name}.gpf"
-    ) as colormap_path:
+    colormap_resource = files(RESOURCE_ANCHOR).joinpath(f"{colormap_name}.gpf")
+    with as_file(colormap_resource) as colormap_path:
         _logger.debug(f"Reading the colormap from {colormap_path}.")
         tmp = []
         for row in np.loadtxt(colormap_path):
