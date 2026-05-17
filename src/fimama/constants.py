@@ -67,3 +67,14 @@ class MapGenerator(ListablePrintableEnum):
     Heightmap generation algorithm names.
     """
     PERLIN = "perlin"
+
+
+class DistanceUnit(ListablePrintableEnum):
+    """
+    Heightmap generation algorithm names.
+    """
+    METER = "m"
+    KILOMETER = "km"
+    FEET = "feet"
+    MILE = "miles"
+    LEAGUE = "leagues"

@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from scipy.spatial import Voronoi
+from scipy.spatial import Voronoi, cKDTree
 
 
 _logger = logging.getLogger(__name__)
@@ -69,13 +69,38 @@ class FimamaMap(Voronoi):
     #     self.points[]
 
     def closest_point(self, x: float, y: float) -> tuple[int, int]:
-        x_index = round(x)
-        y_index = round(y)
-        points = self.points
-        # TODO: make a points property that is intuitively indexed
-        points.shape = self.grid_shape
-        candidates = points[x_index-2:x_index+1, y_index-2:y_index+1]
-        # ei toimi koska points on [n, 2]
-        print(self.points.shape)
-        euclid = np.linalg.norm(candidates-[x, y])
-        return np.argmin(euclid) + [x_index-2, y_index-2]
+        """
+        Find the closest grid indices to a given spatial coordinate.
+
+        Parameters
+        ----------
+        x : float
+            The x-coordinate in the spatial map.
+        y : float
+            The y-coordinate in the spatial map.
+
+        Returns
+        -------
+        tuple[int, int]
+            The (x_index, y_index) of the closest point in the underlying heightmap.
+        """
+        # Lazily instantiate the KDTree the first time a user clicks the map.
+        if not hasattr(self, '_kdtree'):
+            self._kdtree = cKDTree(data=self.points)
+
+        # Query the KDTree for the 1D index of the closest Voronoi point
+        _, closest_idx = self._kdtree.query(x=[x, y])
+
+        # Protect against clicks pulling the extreme boundary dummy points
+        num_valid_points = len(self.points) - len(self.dummy_points)
+        if closest_idx >= num_valid_points:
+            closest_idx = num_valid_points - 1
+
+        # Because the base_points meshgrid matches the heightmap dimensions,
+        # we can perfectly map the 1D flat index back to the 2D heightmap shape
+        # using numpy's built-in unravel_index
+        y_idx, x_idx = np.unravel_index(
+            indices=closest_idx, shape=self.heightmap.shape
+        )
+
+        return int(x_idx), int(y_idx)

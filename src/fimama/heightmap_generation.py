@@ -1,3 +1,7 @@
+"""
+Heightmap generation module.
+"""
+
 import logging
 
 import numpy as np
@@ -13,7 +17,7 @@ def construct_heightmap(
     config: MapConfiguration,
 ) -> np.ndarray:
     """
-    Get a colormap.
+    Construct a procedural heightmap based on the provided configuration.
 
     Parameters
     ----------
@@ -23,14 +27,21 @@ def construct_heightmap(
     Returns
     -------
     np.ndarray
-        The heightmap.
+        The generated heightmap.
+        
+    Raises
+    ------
+    ValueError
+        If the configured generator is not recognised.
     """
     match config.generator:
         case MapGenerator.PERLIN:
             heightmap = perlin_map(
                 width=config.width,
                 height=config.height,
-                params=config.perlin_parameters)
+                params=config.perlin_parameters
+            )
+            # Transpose to align the x/y orientation properly
             heightmap = heightmap.T
         case _:
             raise ValueError(

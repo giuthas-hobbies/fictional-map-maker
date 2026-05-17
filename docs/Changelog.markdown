@@ -38,11 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
       file.
 
 
-## [0.7.0] - 2026-01-31
+## [0.7.0] - 2026-05-31
 
 ### Highlights
 
-- First map editing tool.
+- First map editing tools.
 
 ### Added
 
