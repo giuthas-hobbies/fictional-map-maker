@@ -10,6 +10,7 @@ from matplotlib.collections import PatchCollection
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from fimama.configuration import MapScaleConfiguration, VoronoiConfiguration
 from fimama.voronoi import FimamaMap
@@ -44,7 +45,7 @@ def plot_map(
     if config is None:
         config = VoronoiConfiguration()
 
-    fig = Figure(layout="constrained")
+    fig = Figure()
     axes = fig.add_subplot(111)
     axes.set_aspect(aspect='equal', adjustable='box')
 
@@ -87,7 +88,11 @@ def plot_map(
     axes.set_ylim(bottom=0, top=world_map.grid_shape[1])
 
     # Add a colorbar to display the current scale unit
-    colorbar = fig.colorbar(mappable=poly_collection, ax=axes)
+    divider = make_axes_locatable(axes)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    colorbar = fig.colorbar(mappable=poly_collection, cax=cax)
     colorbar.set_label(f"Elevation ({scale_config.elevation_unit.value})")
+
+    fig.tight_layout()
 
     return fig, axes
