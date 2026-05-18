@@ -84,10 +84,13 @@ class HeightmapEditor(QWidget):
         self._setup_ui()
 
         self.cid_click = self.canvas.mpl_connect(
-            s='button_press_event', func=self.onclick
+            s='button_press_event', func=self.on_click
         )
         self.cid_hover = self.canvas.mpl_connect(
             s='motion_notify_event', func=self.on_hover
+        )
+        self.cid_leave = self.canvas.mpl_connect(
+            s='axes_leave_event', func=self.on_leave
         )
 
     def _setup_ui(self) -> None:
@@ -218,10 +221,6 @@ class HeightmapEditor(QWidget):
     def on_hover(self, event) -> None:
         """Update cursor circle and draw dynamic random paths."""
         if event.inaxes != self.axes:
-            if self.cursor_circle.get_visible():
-                self.cursor_circle.set_visible(False)
-                self.temp_path_line.set_visible(False)
-                self.canvas.draw_idle()
             return
 
         hover_x, hover_y = self.world_map.closest_point(
@@ -243,16 +242,27 @@ class HeightmapEditor(QWidget):
                     randomness=randomness
                 )
 
-                path_x = [p[0] for p in path]
-                path_y = [p[1] for p in path]
-                self.temp_path_line.set_data(path_x, path_y)
+                # The grid is flipped so we flip the coordinates here.
+                path_plot_x = [p[1] for p in path]
+                path_plot_y = [p[0] for p in path]
+
+                self.temp_path_line.set_data(path_plot_x, path_plot_y)
                 self.temp_path_line.set_visible(True)
             else:
                 self.temp_path_line.set_visible(False)
 
             self.canvas.draw_idle()
 
-    def onclick(self, event) -> None:
+    def on_leave(self, event) -> None:
+        """
+        Hide the cursor circle and path when the mouse leaves the map area.
+        """
+        if self.cursor_circle.get_visible():
+            self.cursor_circle.set_visible(False)
+            self.temp_path_line.set_visible(False)
+            self.canvas.draw_idle()
+
+    def on_click(self, event) -> None:
         """Handle execution of Point and Line tools upon clicking the map."""
         if event.inaxes != self.axes or not self.active_tool:
             return
