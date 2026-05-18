@@ -82,7 +82,8 @@ class FimamaMap(Voronoi):
         Returns
         -------
         tuple[int, int]
-            The (x_index, y_index) of the closest point in the underlying heightmap.
+            The (x_index, y_index) of the closest point in the underlying
+            heightmap.
         """
         # Lazily instantiate the KDTree the first time a user clicks the map.
         if not hasattr(self, '_kdtree'):

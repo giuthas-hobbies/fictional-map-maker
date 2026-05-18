@@ -5,11 +5,10 @@ GUI editor tool for the interactive manipulation of heightmaps.
 import logging
 
 import numpy as np
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QDoubleSpinBox,
     QLabel,
     QPushButton,
-    QSlider,
     QVBoxLayout,
     QWidget,
 )
@@ -17,6 +16,7 @@ from matplotlib.axes import Axes
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
+from fimama.configuration import MapScaleConfiguration
 from fimama.heightmap_modifier import HeightmapModifier
 from fimama.voronoi import FimamaMap
 
@@ -37,22 +37,29 @@ class HeightmapEditor(QWidget):
         The Qt canvas instance to trigger redraws and catch events.
     world_map : FimamaMap
         The state container storing the map data.
+    scale_config : MapScaleConfiguration
+        The configuration detailing the physical bounds of the map.
     """
 
     def __init__(
-        self, 
-        figure: Figure, 
-        axes: Axes, 
-        canvas: FigureCanvasQTAgg, 
-        world_map: FimamaMap
+        self,
+        figure: Figure,
+        axes: Axes,
+        canvas: FigureCanvasQTAgg,
+        world_map: FimamaMap,
+        scale_config: MapScaleConfiguration
     ) -> None:
         super().__init__()
         self.figure = figure
         self.axes = axes
         self.canvas = canvas
         self.world_map = world_map
+        self.scale_config = scale_config
 
-        self.modifier = HeightmapModifier(world_map=self.world_map)
+        self.modifier = HeightmapModifier(
+            world_map=self.world_map,
+            scale_config=self.scale_config
+        )
 
         self.x_values: list[float] = []
         self.y_values: list[float] = []
@@ -69,19 +76,25 @@ class HeightmapEditor(QWidget):
         """Initialise the layout and buttons for the tool panel."""
         layout = QVBoxLayout(self)
 
-        self.lbl_strength = QLabel(text="Strength: 20")
+        self.lbl_strength = QLabel(text="Tool Impact Strength:")
         layout.addWidget(self.lbl_strength)
 
-        self.slider_strength = QSlider(
-            orientation=Qt.Orientation.Horizontal
-        )
-        self.slider_strength.setMinimum(1)
-        self.slider_strength.setMaximum(100)
-        self.slider_strength.setValue(20)
-        self.slider_strength.valueChanged.connect(
-            self._update_strength_label
-        )
-        layout.addWidget(self.slider_strength)
+        # Replaced the abstract QSlider with a native float input
+        self.spin_strength = QDoubleSpinBox()
+        self.spin_strength.setMinimum(0.1)
+
+        # Determine the maximum logical impact (half the map's total range)
+        max_impact = self.scale_config.elevation_range / 2.0
+        self.spin_strength.setMaximum(max_impact)
+        self.spin_strength.setValue(max_impact * 0.2)
+        self.spin_strength.setSingleStep(0.1)
+
+        # Transparently append the physical unit so the user sees exactly
+        # what measurement they are applying to the heightmap.
+        unit_label = self.scale_config.elevation_unit.value
+        self.spin_strength.setSuffix(f" {unit_label}")
+
+        layout.addWidget(self.spin_strength)
 
         ui_layout = [
             ("Add Hill", self._gui_add_hill),
@@ -103,27 +116,24 @@ class HeightmapEditor(QWidget):
 
         layout.addStretch()
 
-    def _update_strength_label(self, value: int) -> None:
-        self.lbl_strength.setText(f"Strength: {value}")
-
     def _gui_add_hill(self) -> None:
-        self.modifier.add_hill(height=self.slider_strength.value())
+        self.modifier.add_hill(height=self.spin_strength.value())
         self._update_plot()
 
     def _gui_add_pit(self) -> None:
-        self.modifier.add_pit(depth=self.slider_strength.value())
+        self.modifier.add_pit(depth=self.spin_strength.value())
         self._update_plot()
 
     def _gui_add_range(self) -> None:
-        self.modifier.add_range(height=self.slider_strength.value())
+        self.modifier.add_range(height=self.spin_strength.value())
         self._update_plot()
 
     def _gui_add_trough(self) -> None:
-        self.modifier.add_trough(depth=self.slider_strength.value())
+        self.modifier.add_trough(depth=self.spin_strength.value())
         self._update_plot()
 
     def _gui_add_strait(self) -> None:
-        self.modifier.add_strait(width=self.slider_strength.value())
+        self.modifier.add_strait(depth=self.spin_strength.value())
         self._update_plot()
 
     def _gui_mask(self) -> None:
@@ -143,7 +153,7 @@ class HeightmapEditor(QWidget):
         self._update_plot()
 
     def _gui_add_val(self) -> None:
-        self.modifier.add(amount=10)
+        self.modifier.add(amount=self.spin_strength.value())
         self._update_plot()
 
     def _update_plot(self) -> None:

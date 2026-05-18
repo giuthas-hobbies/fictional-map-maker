@@ -28,7 +28,7 @@ def construct_heightmap(
     -------
     np.ndarray
         The generated heightmap.
-        
+
     Raises
     ------
     ValueError
@@ -47,5 +47,10 @@ def construct_heightmap(
             raise ValueError(
                 f"Unrecognised map generator name {config.generator}."
             )
+
+    # Map the 0.0-1.0 noise output to our physical elevation scale
+    scale_conf = config.scale_configuration
+    elevation_range = scale_conf.max_elevation - scale_conf.min_elevation
+    heightmap = (heightmap * elevation_range) + scale_conf.min_elevation
 
     return heightmap

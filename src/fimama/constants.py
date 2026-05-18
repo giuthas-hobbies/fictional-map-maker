@@ -74,7 +74,7 @@ class DistanceUnit(ListablePrintableEnum):
     Heightmap generation algorithm names.
     """
     METER = "m"
-    KILOMETER = "km"
+    KILOMETRES = "km"
     FEET = "feet"
     MILE = "miles"
     LEAGUE = "leagues"

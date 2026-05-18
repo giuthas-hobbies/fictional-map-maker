@@ -11,7 +11,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
 from matplotlib.patches import Polygon
 
-from fimama.configuration import VoronoiConfiguration
+from fimama.configuration import MapScaleConfiguration, VoronoiConfiguration
 from fimama.voronoi import FimamaMap
 
 _logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ def plot_map(
     world_map: FimamaMap,
     colormap: LinearSegmentedColormap | str = "terrain",
     config: VoronoiConfiguration | None = None,
+    scale_config: MapScaleConfiguration | None = None,
 ) -> tuple[Figure, Axes]:
     """
     Plot a heightmap as a field of Voronoi cells.
@@ -72,6 +73,12 @@ def plot_map(
     # Generate a collection of patches to easily apply colormaps
     poly_collection = PatchCollection(patches=polygons, cmap=colormap)
     poly_collection.set_array(np.array(heights))
+
+    # Explicitly lock the colormap boundaries to the physical scale.
+    poly_collection.set_clim(
+        vmin=scale_config.min_elevation,
+        vmax=scale_config.max_elevation
+    )
 
     axes.add_collection(collection=poly_collection)
 

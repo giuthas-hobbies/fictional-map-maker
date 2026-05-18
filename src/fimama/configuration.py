@@ -6,7 +6,7 @@ import logging
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from fimama.constants import MapGenerator
+from fimama.constants import DistanceUnit, MapGenerator
 
 _logger = logging.getLogger(__name__)
 
@@ -136,6 +136,39 @@ class VoronoiConfiguration(FimamaModel):
     show_points: bool = False
 
 
+class MapScaleConfiguration(FimamaModel):
+    """
+    Configuration defining the physical scale and units of the map.
+
+    Parameters
+    ----------
+    min_elevation : float
+        The lowest possible elevation value, by default -10.0.
+    max_elevation : float
+        The highest possible elevation value, by default 10.0.
+    elevation_unit : DistanceUnit
+        The unit of measurement for elevation, by default KILOMETRES.
+    map_size_unit : DistanceUnit
+        The unit of measurement for the map grid bounds, by default KILOMETRES.
+    """
+    min_elevation: float = -10.0
+    max_elevation: float = 10.0
+    elevation_unit: DistanceUnit = DistanceUnit.KILOMETRES
+    map_size_unit: DistanceUnit = DistanceUnit.KILOMETRES
+
+    @property
+    def elevation_range(self) -> float:
+        """
+        Calculate the total range between the minimum and maximum scale.
+
+        Returns
+        -------
+        float
+            The absolute difference between max_elevation and min_elevation.
+        """
+        return self.max_elevation - self.min_elevation
+
+
 class MapConfiguration(FimamaModel):
     """
     Map generation configuration.
@@ -157,6 +190,8 @@ class MapConfiguration(FimamaModel):
         voronoi_configuration: `VoronoiConfiguration` | None
             Parameters for plotting the Voronoi grid (not the voronoi polygons,
             but rather associated edges and points), by default None.
+        scale_configuration: `MapScaleConfiguration`
+            Parameters defining the physical scale limits and units.
     """
     height: int = 125
     width: int = 200
@@ -164,3 +199,4 @@ class MapConfiguration(FimamaModel):
     colormap_name: str = "dark-atlas"
     perlin_parameters: PerlinParameters | None = None
     voronoi_configuration: VoronoiConfiguration | None = None
+    scale_configuration: MapScaleConfiguration = MapScaleConfiguration()
