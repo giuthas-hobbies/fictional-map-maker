@@ -38,12 +38,6 @@ class HeightmapModifier:
         The reference to the underlying map state.
     scale_config : MapScaleConfiguration
         The physical scaling parameters for the map.
-
-    Examples
-    --------
-    >>> modifier = HeightmapModifier(world_map=my_map, scale_config=conf)
-    >>> modifier.add_hill(count=5, height=5.0, range_x="10-90", range_y="10-90")
-    >>> modifier.mask(power=1.0)
     """
 
     def __init__(
@@ -71,19 +65,8 @@ class HeightmapModifier:
         """
         return self.scale_config.elevation_range * 0.01
 
-    def _get_point_in_range(self, bounds: str, length: int) -> int:
-        """Parse a string range and return a random point within bounds."""
-        parts = bounds.split("-")
-        min_pct = int(parts[0]) / 100.0 if len(parts) > 0 else 0.0
-        max_pct = int(parts[1]) / 100.0 if len(parts) > 1 else min_pct
-
-        min_val = int(min_pct * length)
-        max_val = int(max_pct * length)
-
-        return random.randint(a=min_val, b=max_val)
-
     def _get_neighbors(self, x: int, y: int) -> list[tuple[int, int]]:
-        """Find valid 8-way neighbor coordinates for a given grid cell."""
+        """Find valid 8-way neighbour coordinates for a given grid cell."""
         neighbors = []
         for nx in range(max(0, x - 1), min(self.grid_width, x + 2)):
             for ny in range(max(0, y - 1), min(self.grid_height, y + 2)):
@@ -91,66 +74,23 @@ class HeightmapModifier:
                     neighbors.append((nx, ny))
         return neighbors
 
-    def add_hill(
-        self, count: str | int = 1, height: str | float = 1.0,
-        range_x: str = "10-90", range_y: str = "10-90"
-    ) -> None:
-        """Generate radial hills and apply them to the heightmap."""
-        hill_count = int(count)
-        peak_height = float(height)
+    def hill(self, x: int, y: int, power: float, radius: float) -> None:
+        """Apply a radial hill to a specific coordinate."""
+        _logger.info(f"Adding hill at ({x}, {y}).")
+        self._add_blob(cx=x, cy=y, peak_change=power, radius=radius, is_pit=False)
 
-        _logger.info(f"Adding {hill_count} hills to the map.")
-        for _ in range(hill_count):
-            self._add_blob(
-                peak_change=peak_height, range_x=range_x, range_y=range_y,
-                is_pit=False
-            )
-
-    def add_pit(
-        self, count: str | int = 1, depth: str | float = 1.0,
-        range_x: str = "10-90", range_y: str = "10-90"
-    ) -> None:
-        """Generate radial pits (depressions) in the heightmap."""
-        pit_count = int(count)
-        max_depth = float(depth)
-
-        _logger.info(f"Adding {pit_count} pits to the map.")
-        for _ in range(pit_count):
-            self._add_blob(
-                peak_change=max_depth, range_x=range_x, range_y=range_y,
-                is_pit=True
-            )
+    def pit(self, x: int, y: int, power: float, radius: float) -> None:
+        """Apply a radial pit to a specific coordinate."""
+        _logger.info(f"Adding pit at ({x}, {y}).")
+        self._add_blob(cx=x, cy=y, peak_change=power, radius=radius, is_pit=True)
 
     def _add_blob(
-        self, peak_change: float, range_x: str, range_y: str, is_pit: bool
+        self, cx: int, cy: int, peak_change: float, radius: float, is_pit: bool
     ) -> None:
         """Inject a blob (hill or pit) using Breadth-First Search."""
         change_map = np.zeros_like(self.world_map.heightmap)
-        limit = 0
-
-        while limit < 50:
-            start_x = self._get_point_in_range(
-                bounds=range_x, length=self.grid_width
-            )
-            start_y = self._get_point_in_range(
-                bounds=range_y, length=self.grid_height
-            )
-            
-            current_h = self.world_map.heightmap[start_y, start_x]
-            
-            # Bound checks directly against the configuration scale
-            if is_pit and (
-                current_h - peak_change >= self.scale_config.min_elevation
-            ):
-                break
-            elif not is_pit and (
-                current_h + peak_change <= self.scale_config.max_elevation
-            ):
-                break
-            limit += 1
-
-        change_map[start_y, start_x] = peak_change
-        queue = [(start_x, start_y)]
+        change_map[cy, cx] = peak_change
+        queue = [(cx, cy)]
 
         while queue:
             qx, qy = queue.pop(0)
@@ -160,12 +100,17 @@ class HeightmapModifier:
                 if change_map[ny, nx] > 0:
                     continue
                 
+                # Constrain the blob strictly to the defined radius
+                dist = np.hypot(nx - cx, ny - cy)
+                if dist > radius:
+                    continue
+                
                 new_val = (current_change ** self.blob_power) * \
                           (random.random() * 0.2 + 0.9)
-                change_map[ny, nx] = new_val
 
                 # Dynamically decay against the physical threshold
                 if new_val > self.threshold:
+                    change_map[ny, nx] = new_val
                     queue.append((nx, ny))
 
         if is_pit:
@@ -179,46 +124,54 @@ class HeightmapModifier:
             a_max=self.scale_config.max_elevation
         )
 
-    def add_range(self, count: int = 1, height: float = 1.0) -> None:
-        """Generate mountain ridges along a line."""
-        _logger.info(f"Adding {count} mountain ranges.")
-        for _ in range(count):
-            self._add_line(peak_change=height, is_trough=False)
+    def range_(
+        self, sx: int, sy: int, ex: int, ey: int, power: float, radius: float
+    ) -> None:
+        """Generate a mountain ridge along a line."""
+        _logger.info("Adding mountain range line.")
+        self._add_line(sx, sy, ex, ey, power, radius, is_trough=False)
 
-    def add_trough(self, count: int = 1, depth: float = 1.0) -> None:
-        """Generate troughs (lowered ridges) along a line."""
-        _logger.info(f"Adding {count} troughs.")
-        for _ in range(count):
-            self._add_line(peak_change=depth, is_trough=True)
+    def trough(
+        self, sx: int, sy: int, ex: int, ey: int, power: float, radius: float
+    ) -> None:
+        """Generate a trough (lowered ridge) along a line."""
+        _logger.info("Adding trough line.")
+        self._add_line(sx, sy, ex, ey, power, radius, is_trough=True)
 
-    def add_strait(self, depth: float = 1.0) -> None:
-        """Generate a path lowering terrain to ensure oceans connect."""
-        _logger.info("Adding strait.")
-        self._add_line(peak_change=depth, is_trough=True, is_strait=True)
+    def strait(
+        self, sx: int, sy: int, ex: int, ey: int, power: float, radius: float
+    ) -> None:
+        """Generate a deep path lowering terrain to connect oceans."""
+        _logger.info("Adding strait line.")
+        self._add_line(sx, sy, ex, ey, power, radius, is_trough=True)
 
     def _add_line(
-        self, peak_change: float, is_trough: bool, is_strait: bool = False
+        self, sx: int, sy: int, ex: int, ey: int, peak_change: float, 
+        radius: float, is_trough: bool
     ) -> None:
         """Inject a ridge or trough using line interpolation and BFS."""
         change_map = np.zeros_like(self.world_map.heightmap)
-        
-        sx = random.randint(a=0, b=self.grid_width - 1)
-        sy = random.randint(a=0, b=self.grid_height - 1)
-        ex = random.randint(a=0, b=self.grid_width - 1)
-        ey = random.randint(a=0, b=self.grid_height - 1)
-
-        if is_strait:
-            sx = 0 if random.choice([True, False]) else self.grid_width - 1
-            ex = 0 if sx != 0 else self.grid_width - 1
-
         queue = []
-        steps = max(abs(ex - sx), abs(ey - sy))
-        if steps > 0:
-            for step in range(steps):
-                x = int(sx + (ex - sx) * (step / steps))
-                y = int(sy + (ey - sy) * (step / steps))
+        
+        # Interpolate coordinates along the line
+        steps = max(abs(ex - sx), abs(ey - sy), 1)
+        for step in range(steps + 1):
+            x = int(sx + (ex - sx) * (step / steps))
+            y = int(sy + (ey - sy) * (step / steps))
+            if 0 <= x < self.grid_width and 0 <= y < self.grid_height:
                 change_map[y, x] = peak_change
                 queue.append((x, y))
+
+        def point_line_dist(px: int, py: int) -> float:
+            """Calculate Euclidean distance from a point to the line segment."""
+            line_mag = np.hypot(ex - sx, ey - sy)
+            if line_mag == 0:
+                return float(np.hypot(px - sx, py - sy))
+            u = ((px - sx) * (ex - sx) + (py - sy) * (ey - sy)) / (line_mag ** 2)
+            u = max(min(u, 1.0), 0.0)
+            ix = sx + u * (ex - sx)
+            iy = sy + u * (ey - sy)
+            return float(np.hypot(px - ix, py - iy))
 
         while queue:
             qx, qy = queue.pop(0)
@@ -228,11 +181,15 @@ class HeightmapModifier:
                 if change_map[ny, nx] > 0:
                     continue
                 
+                # Constrain spread to the line's radius
+                if point_line_dist(nx, ny) > radius:
+                    continue
+                
                 new_val = (current_change ** self.line_power) * \
                           (random.random() * 0.2 + 0.9)
-                change_map[ny, nx] = new_val
 
                 if new_val > self.threshold:
+                    change_map[ny, nx] = new_val
                     queue.append((nx, ny))
 
         if is_trough:
@@ -246,9 +203,9 @@ class HeightmapModifier:
             a_max=self.scale_config.max_elevation
         )
 
-    def smooth(self, fraction: int = 2, add: float = 0.0) -> None:
-        """Smooth the heightmap using neighbor-averaging."""
-        _logger.info("Applying smoothing algorithm to heightmap.")
+    def smooth(self) -> None:
+        """Smooth the heightmap globally using neighbor-averaging."""
+        _logger.info("Applying global smoothing to heightmap.")
         new_heights = np.zeros_like(self.world_map.heightmap)
 
         for y in range(self.grid_height):
@@ -261,12 +218,7 @@ class HeightmapModifier:
                 neighbor_vals.append(current_val)
                 
                 avg = np.mean(neighbor_vals)
-                if fraction <= 1:
-                    smoothed = avg + add
-                else:
-                    smoothed = (
-                        (current_val * (fraction - 1) + avg + add) / fraction
-                    )
+                smoothed = (current_val + avg) / 2.0
                 new_heights[y, x] = smoothed
 
         self.world_map.heightmap = np.clip(
@@ -275,15 +227,9 @@ class HeightmapModifier:
             a_max=self.scale_config.max_elevation
         )
 
-    def mask(self, power: float = 1.0) -> None:
-        """
-        Apply a radial mask to force edges toward the minimum elevation.
-
-        This mathematically generates island shapes by pulling the perimeter
-        down towards the deepest ocean bounds defined in the scale config.
-        """
+    def mask(self) -> None:
+        """Apply a global radial mask to force edges to minimum elevation."""
         _logger.info("Masking edges to generate island shapes.")
-        fr = max(abs(power), 1.0)
         
         x_grid, y_grid = np.meshgrid(
             np.arange(self.grid_width), np.arange(self.grid_height)
@@ -293,30 +239,24 @@ class HeightmapModifier:
         ny = (2.0 * y_grid) / self.grid_height - 1.0
         
         distance = (1.0 - nx**2) * (1.0 - ny**2)
-        if power < 0:
-            distance = 1.0 - distance
             
-        # Linearly interpolate the heights down to the min_elevation at edges
         masked_map = self.scale_config.min_elevation + (
             self.world_map.heightmap - self.scale_config.min_elevation
         ) * distance
         
         self.world_map.heightmap = np.clip(
-            a=(self.world_map.heightmap * (fr - 1.0) + masked_map) / fr,
+            a=masked_map,
             a_min=self.scale_config.min_elevation, 
             a_max=self.scale_config.max_elevation
         )
 
-    def invert(self, axis: str = "both") -> None:
-        """Mirror the heightmap horizontally, vertically, or both."""
-        _logger.info(f"Inverting map across axis: {axis}")
-        if axis in ("horizontal", "both"):
-            self.world_map.heightmap = np.fliplr(self.world_map.heightmap)
-        if axis in ("vertical", "both"):
-            self.world_map.heightmap = np.flipud(self.world_map.heightmap)
+    def invert(self) -> None:
+        """Mirror the heightmap globally across the horizontal axis."""
+        _logger.info("Inverting map across horizontal axis.")
+        self.world_map.heightmap = np.fliplr(self.world_map.heightmap)
 
     def add(self, amount: float) -> None:
-        """Add a flat value to all terrain heights."""
+        """Add a flat global value to all terrain heights."""
         _logger.info(f"Adding {amount} to all heights.")
         self.world_map.heightmap = np.clip(
             a=self.world_map.heightmap + amount, 
@@ -324,11 +264,11 @@ class HeightmapModifier:
             a_max=self.scale_config.max_elevation
         )
 
-    def multiply(self, factor: float) -> None:
-        """Multiply all terrain heights by a flat factor."""
-        _logger.info(f"Multiplying all heights by {factor}.")
+    def multiply(self) -> None:
+        """Multiply all terrain heights globally by a 1.2 flat factor."""
+        _logger.info("Multiplying all heights by 1.2.")
         self.world_map.heightmap = np.clip(
-            a=self.world_map.heightmap * factor, 
+            a=self.world_map.heightmap * 1.2, 
             a_min=self.scale_config.min_elevation, 
             a_max=self.scale_config.max_elevation
         )
