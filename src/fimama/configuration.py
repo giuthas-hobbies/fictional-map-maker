@@ -151,9 +151,9 @@ class MapScaleConfiguration(FimamaModel):
     map_size_unit : DistanceUnit
         The unit of measurement for the map grid bounds, by default KILOMETRES.
     """
-    min_elevation: float = -10.0
-    max_elevation: float = 10.0
-    elevation_unit: DistanceUnit = DistanceUnit.KILOMETRES
+    min_elevation: float = -10000.0
+    max_elevation: float = 10000.0
+    elevation_unit: DistanceUnit = DistanceUnit.METER
     map_size_unit: DistanceUnit = DistanceUnit.KILOMETRES
 
     @property
