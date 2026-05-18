@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Testing.
+* Undo for map editing.
 * Make the maps extendable.
   * This includes continuing a map from one or more sides and
   * Creating submaps/overmaps with larger/smaller scales.
@@ -34,19 +36,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     to use this for mapping a whole planet.
 * Erosion/hydrology modelling with differentiation for different terrain types
   would be nice.
-- Later on map configuration in the gui and saveable/loadable to/from a
-      file.
 
 
-## [0.7.0] - 2026-05-31
+## [0.7.0] - 2026-05-18
 
 ### Highlights
 
-- First map editing tools.
+- Height map editing tools.
+- Save and load.
+- Export the map as an image.
 
 ### Added
 
-- 
+- Height map editing tools mimicking similar functionality in Azgaar's fantasy
+  mapmaker.
+- Save and load functionality. The save format is a zip file which contains
+  parameters and other human readable parts of the map in human readable
+  formats.
+- Export either the visible part of the map or the whole map.
 
 
 ## [0.6.0] - 2026-01-26
