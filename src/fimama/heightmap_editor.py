@@ -5,7 +5,7 @@ GUI editor tool for the interactive manipulation of heightmaps.
 import logging
 
 import numpy as np
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QGroupBox,
     QLabel,
@@ -44,6 +44,9 @@ class HeightmapEditor(QWidget):
         The configuration detailing the physical bounds of the map.
     """
 
+    # Signal emitted whenever the heightmap is altered
+    map_modified = pyqtSignal()
+
     def __init__(
         self,
         figure: Figure,
@@ -80,6 +83,9 @@ class HeightmapEditor(QWidget):
         self.temp_path_line, = self.axes.plot(
             [], [], 'r--', visible=False, linewidth=2
         )
+
+        # Store references to interactive tool buttons for highlighting
+        self.tool_buttons: dict[str, QPushButton] = {}
 
         self._setup_ui()
 
@@ -138,6 +144,7 @@ class HeightmapEditor(QWidget):
         layout_point = QVBoxLayout()
         for tool in ["Hill", "Pit"]:
             btn = QPushButton(text=tool)
+            self.tool_buttons[tool] = btn  # Store reference
             btn.clicked.connect(
                 lambda checked, t=tool: self._set_tool(name=t, mode="Point")
             )
@@ -150,6 +157,7 @@ class HeightmapEditor(QWidget):
         layout_line = QVBoxLayout()
         for tool in ["Range", "Trough", "Strait"]:
             btn = QPushButton(text=tool)
+            self.tool_buttons[tool] = btn  # Store reference
             btn.clicked.connect(
                 lambda checked, t=tool: self._set_tool(name=t, mode="Line")
             )
@@ -186,6 +194,27 @@ class HeightmapEditor(QWidget):
 
         layout.addStretch()
 
+    def _set_tool(self, name: str, mode: str) -> None:
+        """Activate an interactive tool and highlight its button."""
+        self.active_tool = name
+        self.tool_mode = mode
+        self.lbl_active_tool.setText(f"Active Tool: {name} ({mode})")
+
+        # Highlight the active button and reset all others
+        for btn_name, btn in self.tool_buttons.items():
+            if btn_name == name:
+                # Use Qt Stylesheets to indicate the active state
+                btn.setStyleSheet(
+                    "background-color: #cce5ff; font-weight: bold;"
+                )
+            else:
+                btn.setStyleSheet("")
+
+        self.x_indices.clear()
+        self.y_indices.clear()
+        self.temp_path_line.set_visible(False)
+        self.canvas.draw_idle()
+
     def _get_power(self) -> float:
         """Map the 0-100 slider strictly to 0.0 - max_elevation bounds."""
         pct = self.slider_power.value() / 100.0
@@ -205,17 +234,6 @@ class HeightmapEditor(QWidget):
         self.lbl_randomness.setText(f"Path Randomness: {rand_val:.2f}")
 
         self.cursor_circle.set_radius(rad)
-        self.canvas.draw_idle()
-
-    def _set_tool(self, name: str, mode: str) -> None:
-        """Activate an interactive map-clicking tool."""
-        self.active_tool = name
-        self.tool_mode = mode
-        self.lbl_active_tool.setText(f"Active Tool: {name} ({mode})")
-
-        self.x_indices.clear()
-        self.y_indices.clear()
-        self.temp_path_line.set_visible(False)
         self.canvas.draw_idle()
 
     def on_hover(self, event) -> None:
@@ -350,3 +368,5 @@ class HeightmapEditor(QWidget):
             collection.set_array(heights_array)
 
         self.canvas.draw_idle()
+        # Notify the main GUI that unsaved changes exist
+        self.map_modified.emit()
