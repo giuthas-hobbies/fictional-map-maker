@@ -6,12 +6,11 @@ altering the topographical heightmap state stored in a `FimamaMap`.
 """
 
 import logging
-import random
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 from fimama.configuration import MapScaleConfiguration
-from fimama.constants import BLOB_POWER_MAP, LINE_POWER_MAP
 from fimama.voronoi import FimamaMap
 
 _logger = logging.getLogger(__name__)
@@ -24,20 +23,6 @@ class HeightmapModifier:
     This class implements topographical tools (hills, pits, ranges,
     troughs) to operate directly on a `FimamaMap` within strict physical
     scale boundaries.
-
-    Parameters
-    ----------
-    world_map : FimamaMap
-        The map object containing the heightmap to modify.
-    scale_config : MapScaleConfiguration
-        The configuration detailing the physical bounds of the map.
-
-    Attributes
-    ----------
-    world_map : FimamaMap
-        The reference to the underlying map state.
-    scale_config : MapScaleConfiguration
-        The physical scaling parameters for the map.
     """
 
     def __init__(
@@ -48,75 +33,124 @@ class HeightmapModifier:
 
         self.grid_width = world_map.grid_shape[1]
         self.grid_height = world_map.grid_shape[0]
-        self.num_cells = self.grid_width * self.grid_height
 
-        self.blob_power = BLOB_POWER_MAP.get(self.num_cells, 0.98)
-        self.line_power = LINE_POWER_MAP.get(self.num_cells, 0.81)
+        _logger.debug("Initialised HeightmapModifier.")
 
-        _logger.debug(
-            f"Initialised HeightmapModifier for {self.num_cells} cells."
-        )
-
-    @property
-    def threshold(self) -> float:
+    def generate_random_walk(
+        self, start_x: int, start_y: int, end_x: int, end_y: int, 
+        randomness: float
+    ) -> list[tuple[int, int]]:
         """
-        The minimum physical value change required to keep the BFS queue
-        expanding. Calculated as 1% of the total physical elevation range.
+        Generate a random path between two points via midpoint displacement.
+
+        Parameters
+        ----------
+        start_x : int
+            X coordinate of the starting point.
+        start_y : int
+            Y coordinate of the starting point.
+        end_x : int
+            X coordinate of the ending point.
+        end_y : int
+            Y coordinate of the ending point.
+        randomness : float
+            Float between 0.0 and 1.0 driving lateral jitter intensity.
+
+        Returns
+        -------
+        list[tuple[int, int]]
+            A list of contiguous coordinate tuples defining the path.
         """
-        return self.scale_config.elevation_range * 0.01
+        # Bind seed to coordinates to prevent flickering during hover
+        seed_val = hash((start_x, start_y, end_x, end_y)) % (2**32)
+        rng = np.random.default_rng(seed_val)
+        
+        path = [(float(start_x), float(start_y)), (float(end_x), float(end_y))]
+        length = np.hypot(end_x - start_x, end_y - start_y)
+        num_subdivisions = int(np.log2(max(length, 1))) + 1
+        
+        for _ in range(num_subdivisions):
+            new_path = []
+            for i in range(len(path) - 1):
+                p1, p2 = path[i], path[i+1]
+                mid_x = (p1[0] + p2[0]) / 2.0
+                mid_y = (p1[1] + p2[1]) / 2.0
+                
+                dx, dy = p2[0] - p1[0], p2[1] - p1[1]
+                seg_len = np.hypot(dx, dy)
+                
+                if seg_len > 0:
+                    px, py = -dy / seg_len, dx / seg_len
+                else:
+                    px, py = 0, 0
+                
+                # Apply scaled random jitter perpendicular to the line
+                jitter = (rng.random() - 0.5) * seg_len * randomness
+                mid_x += px * jitter
+                mid_y += py * jitter
+                
+                new_path.extend([p1, (mid_x, mid_y)])
+            new_path.append(path[-1])
+            path = new_path
+            
+        # Convert fractal float boundaries into a continuous integer grid line
+        continuous_path = []
+        for i in range(len(path) - 1):
+            x1, y1 = int(round(path[i][0])), int(round(path[i][1]))
+            x2, y2 = int(round(path[i+1][0])), int(round(path[i+1][1]))
+            
+            steps = max(abs(x2 - x1), abs(y2 - y1), 1)
+            for step in range(steps):
+                cx = int(x1 + (x2 - x1) * (step / steps))
+                cy = int(y1 + (y2 - y1) * (step / steps))
+                if not continuous_path or continuous_path[-1] != (cx, cy):
+                    continuous_path.append((cx, cy))
+                    
+        end_idx = (int(round(path[-1][0])), int(round(path[-1][1])))
+        if not continuous_path or continuous_path[-1] != end_idx:
+            continuous_path.append(end_idx)
+            
+        return continuous_path
 
-    def _get_neighbors(self, x: int, y: int) -> list[tuple[int, int]]:
-        """Find valid 8-way neighbour coordinates for a given grid cell."""
-        neighbors = []
-        for nx in range(max(0, x - 1), min(self.grid_width, x + 2)):
-            for ny in range(max(0, y - 1), min(self.grid_height, y + 2)):
-                if nx != x or ny != y:
-                    neighbors.append((nx, ny))
-        return neighbors
-
-    def hill(self, x: int, y: int, power: float, radius: float) -> None:
+    def hill(
+        self, center_x: int, center_y: int, power: float, radius: float
+    ) -> None:
         """Apply a radial hill to a specific coordinate."""
-        _logger.info(f"Adding hill at ({x}, {y}).")
-        self._add_blob(cx=x, cy=y, peak_change=power, radius=radius, is_pit=False)
+        _logger.info(f"Adding hill at ({center_x}, {center_y}).")
+        self._add_blob(center_x, center_y, power, radius, is_pit=False)
 
-    def pit(self, x: int, y: int, power: float, radius: float) -> None:
+    def pit(
+        self, center_x: int, center_y: int, power: float, radius: float
+    ) -> None:
         """Apply a radial pit to a specific coordinate."""
-        _logger.info(f"Adding pit at ({x}, {y}).")
-        self._add_blob(cx=x, cy=y, peak_change=power, radius=radius, is_pit=True)
+        _logger.info(f"Adding pit at ({center_x}, {center_y}).")
+        self._add_blob(center_x, center_y, power, radius, is_pit=True)
 
     def _add_blob(
-        self, cx: int, cy: int, peak_change: float, radius: float, is_pit: bool
+        self, center_x: int, center_y: int, peak_change: float, 
+        radius: float, is_pit: bool
     ) -> None:
-        """Inject a blob (hill or pit) using Breadth-First Search."""
-        change_map = np.zeros_like(self.world_map.heightmap)
-        change_map[cy, cx] = peak_change
-        queue = [(cx, cy)]
+        """Inject a blob using vectorised distance falloff."""
+        min_x = max(0, int(center_x - radius - 1))
+        max_x = min(self.grid_width, int(center_x + radius + 2))
+        min_y = max(0, int(center_y - radius - 1))
+        max_y = min(self.grid_height, int(center_y + radius + 2))
 
-        while queue:
-            qx, qy = queue.pop(0)
-            current_change = change_map[qy, qx]
+        xx, yy = np.meshgrid(np.arange(min_x, max_x), np.arange(min_y, max_y))
+        distances = np.hypot(xx - center_x, yy - center_y)
 
-            for nx, ny in self._get_neighbors(x=qx, y=qy):
-                if change_map[ny, nx] > 0:
-                    continue
-                
-                # Constrain the blob strictly to the defined radius
-                dist = np.hypot(nx - cx, ny - cy)
-                if dist > radius:
-                    continue
-                
-                new_val = (current_change ** self.blob_power) * \
-                          (random.random() * 0.2 + 0.9)
-
-                # Dynamically decay against the physical threshold
-                if new_val > self.threshold:
-                    change_map[ny, nx] = new_val
-                    queue.append((nx, ny))
+        # Scale effect from 1.0 at center to 0.0 at radius edge
+        falloff = np.clip(1.0 - (distances / radius), a_min=0.0, a_max=1.0)
+        
+        rng = np.random.default_rng()
+        noise = rng.uniform(low=0.8, high=1.2, size=distances.shape)
+        
+        changes = np.where(distances <= radius, peak_change * falloff * noise, 0)
 
         if is_pit:
-            self.world_map.heightmap -= change_map
+            self.world_map.heightmap[min_y:max_y, min_x:max_x] -= changes
         else:
-            self.world_map.heightmap += change_map
+            self.world_map.heightmap[min_y:max_y, min_x:max_x] += changes
             
         self.world_map.heightmap = np.clip(
             a=self.world_map.heightmap, 
@@ -125,77 +159,59 @@ class HeightmapModifier:
         )
 
     def range_(
-        self, sx: int, sy: int, ex: int, ey: int, power: float, radius: float
+        self, path: list[tuple[int, int]], power: float, radius: float
     ) -> None:
-        """Generate a mountain ridge along a line."""
+        """Generate a mountain ridge along a path."""
         _logger.info("Adding mountain range line.")
-        self._add_line(sx, sy, ex, ey, power, radius, is_trough=False)
+        self._add_line(path, power, radius, is_trough=False)
 
     def trough(
-        self, sx: int, sy: int, ex: int, ey: int, power: float, radius: float
+        self, path: list[tuple[int, int]], power: float, radius: float
     ) -> None:
-        """Generate a trough (lowered ridge) along a line."""
+        """Generate a trough (lowered ridge) along a path."""
         _logger.info("Adding trough line.")
-        self._add_line(sx, sy, ex, ey, power, radius, is_trough=True)
+        self._add_line(path, power, radius, is_trough=True)
 
     def strait(
-        self, sx: int, sy: int, ex: int, ey: int, power: float, radius: float
+        self, path: list[tuple[int, int]], power: float, radius: float
     ) -> None:
         """Generate a deep path lowering terrain to connect oceans."""
         _logger.info("Adding strait line.")
-        self._add_line(sx, sy, ex, ey, power, radius, is_trough=True)
+        self._add_line(path, power, radius, is_trough=True)
 
     def _add_line(
-        self, sx: int, sy: int, ex: int, ey: int, peak_change: float, 
+        self, path: list[tuple[int, int]], peak_change: float, 
         radius: float, is_trough: bool
     ) -> None:
-        """Inject a ridge or trough using line interpolation and BFS."""
-        change_map = np.zeros_like(self.world_map.heightmap)
-        queue = []
+        """Inject a ridge or trough using KDTree path lookups."""
+        if not path:
+            return
+
+        path_x = [p[0] for p in path]
+        path_y = [p[1] for p in path]
+        min_x = max(0, int(min(path_x) - radius - 1))
+        max_x = min(self.grid_width, int(max(path_x) + radius + 2))
+        min_y = max(0, int(min(path_y) - radius - 1))
+        max_y = min(self.grid_height, int(max(path_y) + radius + 2))
+
+        xx, yy = np.meshgrid(np.arange(min_x, max_x), np.arange(min_y, max_y))
+        grid_points = np.c_[xx.ravel(), yy.ravel()]
+
+        # KDTree resolves the closest distance to the jagged line instantly
+        tree = cKDTree(path)
+        distances, _ = tree.query(grid_points)
+        distances = distances.reshape(xx.shape)
+
+        falloff = np.clip(1.0 - (distances / radius), a_min=0.0, a_max=1.0)
+        rng = np.random.default_rng()
+        noise = rng.uniform(low=0.8, high=1.2, size=distances.shape)
         
-        # Interpolate coordinates along the line
-        steps = max(abs(ex - sx), abs(ey - sy), 1)
-        for step in range(steps + 1):
-            x = int(sx + (ex - sx) * (step / steps))
-            y = int(sy + (ey - sy) * (step / steps))
-            if 0 <= x < self.grid_width and 0 <= y < self.grid_height:
-                change_map[y, x] = peak_change
-                queue.append((x, y))
-
-        def point_line_dist(px: int, py: int) -> float:
-            """Calculate Euclidean distance from a point to the line segment."""
-            line_mag = np.hypot(ex - sx, ey - sy)
-            if line_mag == 0:
-                return float(np.hypot(px - sx, py - sy))
-            u = ((px - sx) * (ex - sx) + (py - sy) * (ey - sy)) / (line_mag ** 2)
-            u = max(min(u, 1.0), 0.0)
-            ix = sx + u * (ex - sx)
-            iy = sy + u * (ey - sy)
-            return float(np.hypot(px - ix, py - iy))
-
-        while queue:
-            qx, qy = queue.pop(0)
-            current_change = change_map[qy, qx]
-
-            for nx, ny in self._get_neighbors(x=qx, y=qy):
-                if change_map[ny, nx] > 0:
-                    continue
-                
-                # Constrain spread to the line's radius
-                if point_line_dist(nx, ny) > radius:
-                    continue
-                
-                new_val = (current_change ** self.line_power) * \
-                          (random.random() * 0.2 + 0.9)
-
-                if new_val > self.threshold:
-                    change_map[ny, nx] = new_val
-                    queue.append((nx, ny))
+        changes = np.where(distances <= radius, peak_change * falloff * noise, 0)
 
         if is_trough:
-            self.world_map.heightmap -= change_map
+            self.world_map.heightmap[min_y:max_y, min_x:max_x] -= changes
         else:
-            self.world_map.heightmap += change_map
+            self.world_map.heightmap[min_y:max_y, min_x:max_x] += changes
             
         self.world_map.heightmap = np.clip(
             a=self.world_map.heightmap, 
@@ -211,15 +227,21 @@ class HeightmapModifier:
         for y in range(self.grid_height):
             for x in range(self.grid_width):
                 current_val = self.world_map.heightmap[y, x]
-                neighbors = self._get_neighbors(x=x, y=y)
+                
+                # Fetch cross-neighbors for smoothing
+                neighbors = []
+                for nx in range(max(0, x - 1), min(self.grid_width, x + 2)):
+                    for ny in range(max(0, y - 1), min(self.grid_height, y + 2)):
+                        if nx != x or ny != y:
+                            neighbors.append((nx, ny))
+                            
                 neighbor_vals = [
                     self.world_map.heightmap[ny, nx] for nx, ny in neighbors
                 ]
                 neighbor_vals.append(current_val)
                 
                 avg = np.mean(neighbor_vals)
-                smoothed = (current_val + avg) / 2.0
-                new_heights[y, x] = smoothed
+                new_heights[y, x] = (current_val + avg) / 2.0
 
         self.world_map.heightmap = np.clip(
             a=new_heights, 
@@ -234,7 +256,6 @@ class HeightmapModifier:
         x_grid, y_grid = np.meshgrid(
             np.arange(self.grid_width), np.arange(self.grid_height)
         )
-        
         nx = (2.0 * x_grid) / self.grid_width - 1.0
         ny = (2.0 * y_grid) / self.grid_height - 1.0
         

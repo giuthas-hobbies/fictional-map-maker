@@ -64,28 +64,25 @@ class HeightmapEditor(QWidget):
             scale_config=self.scale_config
         )
 
-        # State machine for the active interactive tool
         self.active_tool: str | None = None
         self.tool_mode: str | None = None
 
-        # Variables for storing drawing path coordinates
         self.x_indices: list[int] = []
         self.y_indices: list[int] = []
-        self.x_coords: list[float] = []
-        self.y_coords: list[float] = []
-        self.temp_plot = None
 
-        # Add a dynamic circle patch to the plot to visualise tool radius
+        # Dynamic visual patches for tool feedback
         self.cursor_circle = Circle(
             xy=(0, 0), radius=10, color='red', fill=False, visible=False,
             linestyle='--'
         )
         self.axes.add_patch(self.cursor_circle)
 
-        # Setup the UI structure
+        self.temp_path_line, = self.axes.plot(
+            [], [], 'r--', visible=False, linewidth=2
+        )
+
         self._setup_ui()
 
-        # Hook up matplotlib interactions
         self.cid_click = self.canvas.mpl_connect(
             s='button_press_event', func=self.onclick
         )
@@ -97,12 +94,10 @@ class HeightmapEditor(QWidget):
         """Initialise the layout, sliders, and grouped tool buttons."""
         layout = QVBoxLayout(self)
 
-        # Active Tool Indicator
         self.lbl_active_tool = QLabel(text="Active Tool: None")
         self.lbl_active_tool.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.lbl_active_tool)
 
-        # Sliders Setup
         self.lbl_power = QLabel(text="Power:")
         layout.addWidget(self.lbl_power)
 
@@ -122,6 +117,16 @@ class HeightmapEditor(QWidget):
         self.slider_radius.setValue(20)
         self.slider_radius.valueChanged.connect(self._update_labels)
         layout.addWidget(self.slider_radius)
+
+        self.lbl_randomness = QLabel(text="Path Randomness:")
+        layout.addWidget(self.lbl_randomness)
+
+        self.slider_randomness = QSlider(orientation=Qt.Orientation.Horizontal)
+        self.slider_randomness.setMinimum(0)
+        self.slider_randomness.setMaximum(100)
+        self.slider_randomness.setValue(20)
+        self.slider_randomness.valueChanged.connect(self._update_labels)
+        layout.addWidget(self.slider_randomness)
 
         self._update_labels()
 
@@ -193,7 +198,9 @@ class HeightmapEditor(QWidget):
         unit_size = self.scale_config.map_size_unit.value
         self.lbl_radius.setText(f"Radius: {rad} {unit_size}")
 
-        # Keep the dynamic cursor in sync with the slider if active
+        rand_val = self.slider_randomness.value() / 100.0
+        self.lbl_randomness.setText(f"Path Randomness: {rand_val:.2f}")
+
         self.cursor_circle.set_radius(rad)
         self.canvas.draw_idle()
 
@@ -203,29 +210,46 @@ class HeightmapEditor(QWidget):
         self.tool_mode = mode
         self.lbl_active_tool.setText(f"Active Tool: {name} ({mode})")
 
-        # Reset line drawing states
         self.x_indices.clear()
         self.y_indices.clear()
-        self.x_coords.clear()
-        self.y_coords.clear()
-        if self.temp_plot:
-            self.temp_plot[0].remove()
-            self.temp_plot = None
+        self.temp_path_line.set_visible(False)
         self.canvas.draw_idle()
 
     def on_hover(self, event) -> None:
-        """
-        Update cursor circle position for immediate area-of-effect feedback.
-        """
+        """Update cursor circle and draw dynamic random paths."""
         if event.inaxes != self.axes:
             if self.cursor_circle.get_visible():
                 self.cursor_circle.set_visible(False)
+                self.temp_path_line.set_visible(False)
                 self.canvas.draw_idle()
             return
+
+        hover_x, hover_y = self.world_map.closest_point(
+            x=event.xdata, y=event.ydata
+        )
 
         if self.tool_mode in ("Point", "Line"):
             self.cursor_circle.set_center((event.xdata, event.ydata))
             self.cursor_circle.set_visible(True)
+
+            # Draw the dynamic random walk bridging the first click and cursor
+            if self.tool_mode == "Line" and len(self.x_indices) == 1:
+                randomness = self.slider_randomness.value() / 100.0
+                path = self.modifier.generate_random_walk(
+                    start_x=self.x_indices[0],
+                    start_y=self.y_indices[0],
+                    end_x=hover_x,
+                    end_y=hover_y,
+                    randomness=randomness
+                )
+
+                path_x = [p[0] for p in path]
+                path_y = [p[1] for p in path]
+                self.temp_path_line.set_data(path_x, path_y)
+                self.temp_path_line.set_visible(True)
+            else:
+                self.temp_path_line.set_visible(False)
+
             self.canvas.draw_idle()
 
     def onclick(self, event) -> None:
@@ -236,50 +260,45 @@ class HeightmapEditor(QWidget):
         x, y = self.world_map.closest_point(x=event.xdata, y=event.ydata)
         pwr = self._get_power()
         rad = self.slider_radius.value()
+        rand_val = self.slider_randomness.value() / 100.0
 
         if self.tool_mode == "Point":
             if self.active_tool == "Hill":
-                self.modifier.hill(x=x, y=y, power=pwr, radius=rad)
+                self.modifier.hill(
+                    center_x=x, center_y=y, power=pwr, radius=rad
+                )
             elif self.active_tool == "Pit":
-                self.modifier.pit(x=x, y=y, power=pwr, radius=rad)
+                self.modifier.pit(
+                    center_x=x, center_y=y, power=pwr, radius=rad
+                )
             self._update_plot()
 
         elif self.tool_mode == "Line":
             self.x_indices.append(x)
             self.y_indices.append(y)
-            self.x_coords.append(event.xdata)
-            self.y_coords.append(event.ydata)
 
-            # First click visual feedback
-            if len(self.x_indices) == 1:
-                self.temp_plot = self.axes.plot(
-                    self.x_coords, self.y_coords, 'ro'
+            if len(self.x_indices) == 2:
+                # 2nd click: extract exact path
+                # shown on screen to modify terrain
+                path = self.modifier.generate_random_walk(
+                    start_x=self.x_indices[0],
+                    start_y=self.y_indices[0],
+                    end_x=self.x_indices[1],
+                    end_y=self.y_indices[1],
+                    randomness=rand_val
                 )
-                self.canvas.draw_idle()
-
-            # Second click execution
-            elif len(self.x_indices) == 2:
-                sx, sy = self.x_indices[0], self.y_indices[0]
-                ex, ey = self.x_indices[1], self.y_indices[1]
 
                 if self.active_tool == "Range":
-                    self.modifier.range_(sx, sy, ex, ey, power=pwr, radius=rad)
+                    self.modifier.range_(path=path, power=pwr, radius=rad)
                 elif self.active_tool == "Trough":
-                    self.modifier.trough(sx, sy, ex, ey, power=pwr, radius=rad)
+                    self.modifier.trough(path=path, power=pwr, radius=rad)
                 elif self.active_tool == "Strait":
-                    self.modifier.strait(sx, sy, ex, ey, power=pwr, radius=rad)
+                    self.modifier.strait(path=path, power=pwr, radius=rad)
 
-                # Cleanup state
-                if self.temp_plot:
-                    self.temp_plot[0].remove()
-                    self.temp_plot = None
+                self.temp_path_line.set_visible(False)
                 self.x_indices.clear()
                 self.y_indices.clear()
-                self.x_coords.clear()
-                self.y_coords.clear()
                 self._update_plot()
-
-    # --- Global Tools Triggered Directly by Buttons ---
 
     def _gui_mask(self) -> None:
         self.modifier.mask()
