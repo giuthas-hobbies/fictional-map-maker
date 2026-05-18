@@ -44,7 +44,6 @@ def plot_map(
     if config is None:
         config = VoronoiConfiguration()
 
-    # Create figure independently from pyplot to avoid state conflicts
     fig = Figure(layout="constrained")
     axes = fig.add_subplot(111)
     axes.set_aspect(aspect='equal', adjustable='box')
@@ -86,5 +85,9 @@ def plot_map(
     # This keeps the extreme dummy cells completely out of sight.
     axes.set_xlim(left=0, right=world_map.grid_shape[0])
     axes.set_ylim(bottom=0, top=world_map.grid_shape[1])
+
+    # Add a colorbar to display the current scale unit
+    colorbar = fig.colorbar(mappable=poly_collection, ax=axes)
+    colorbar.set_label(f"Elevation ({scale_config.elevation_unit.value})")
 
     return fig, axes

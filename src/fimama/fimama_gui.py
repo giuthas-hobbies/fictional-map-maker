@@ -13,9 +13,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QCloseEvent, QKeySequence, QWheelEvent
 from PyQt6.QtWidgets import (
-    QDialog,
     QFileDialog,
-    QLabel,
     QMainWindow,
     QMessageBox,
     QScrollArea,
@@ -24,38 +22,19 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from fimama.configuration import MapConfiguration
+from fimama.configuration import MapConfiguration, PerlinParameters, VoronoiConfiguration
+from fimama.dialogs import (
+    MapSettingsDialog,
+    PerlinSettingsDialog,
+    ScaleSettingsDialog,
+    VoronoiSettingsDialog,
+)
 from fimama.heightmap_editor import HeightmapEditor
+from fimama.heightmap_generation import construct_heightmap
 from fimama.plot import plot_map
 from fimama.voronoi import FimamaMap
 
 _logger = logging.getLogger(__name__)
-
-
-class SettingsDialog(QDialog):
-    """
-    Popup dialog for adjusting application settings.
-    To be expanded with actual setting form fields.
-    """
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Fimama Settings")
-        self.resize(300, 200)
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Settings configuration will go here."))
-
-
-class NewMapDialog(QDialog):
-    """
-    Popup dialog for defining generation parameters for a new map.
-    To be expanded with inputs for map size, scale, and generator type.
-    """
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Generate New Map")
-        self.resize(300, 200)
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("New map parameters will go here."))
 
 
 class FimamaGui(QMainWindow):
@@ -87,7 +66,6 @@ class FimamaGui(QMainWindow):
         self.colormap = colormap
         self.zoom_factor: float = 1.0
         
-        # Track if the map has been altered since the last save
         self.is_modified: bool = False
 
         self.setWindowTitle("Fimama Map Maker")
@@ -105,13 +83,13 @@ class FimamaGui(QMainWindow):
         self._setup_ui()
 
     def _setup_menus(self) -> None:
-        """Construct the menu bar and bind actions to keyboard shortcuts."""
+        """Construct the menu bar and bind actions to shortcuts."""
         menubar = self.menuBar()
 
         # --- File Menu ---
         file_menu = menubar.addMenu("&File")
 
-        action_new = QAction("&New Map", self)
+        action_new = QAction("&New Map...", self)
         action_new.setShortcut(QKeySequence.StandardKey.New)
         action_new.triggered.connect(self._cmd_new)
         file_menu.addAction(action_new)
@@ -121,7 +99,7 @@ class FimamaGui(QMainWindow):
         action_open.triggered.connect(self._cmd_open)
         file_menu.addAction(action_open)
 
-        action_save = QAction("&Save As...", self)
+        action_save = QAction("&Save Map As...", self)
         action_save.setShortcut(QKeySequence.StandardKey.Save)
         action_save.triggered.connect(self._cmd_save)
         file_menu.addAction(action_save)
@@ -136,9 +114,31 @@ class FimamaGui(QMainWindow):
         # --- Settings Menu ---
         settings_menu = menubar.addMenu("&Settings")
         
-        action_prefs = QAction("&Preferences", self)
-        action_prefs.triggered.connect(self._cmd_settings)
-        settings_menu.addAction(action_prefs)
+        act_cfg_map = QAction("Map Generation Settings...", self)
+        act_cfg_map.triggered.connect(self._cmd_cfg_map)
+        settings_menu.addAction(act_cfg_map)
+
+        act_cfg_scale = QAction("Scale and Unit Settings...", self)
+        act_cfg_scale.triggered.connect(self._cmd_cfg_scale)
+        settings_menu.addAction(act_cfg_scale)
+
+        act_cfg_perlin = QAction("Perlin Noise Parameters...", self)
+        act_cfg_perlin.triggered.connect(self._cmd_cfg_perlin)
+        settings_menu.addAction(act_cfg_perlin)
+
+        act_cfg_voronoi = QAction("Voronoi Visual Settings...", self)
+        act_cfg_voronoi.triggered.connect(self._cmd_cfg_voronoi)
+        settings_menu.addAction(act_cfg_voronoi)
+
+        settings_menu.addSeparator()
+
+        act_load_cfg = QAction("Load Configuration...", self)
+        act_load_cfg.triggered.connect(self._cmd_load_cfg)
+        settings_menu.addAction(act_load_cfg)
+
+        act_save_cfg = QAction("Save Configuration As...", self)
+        act_save_cfg.triggered.connect(self._cmd_save_cfg)
+        settings_menu.addAction(act_save_cfg)
 
     def _setup_ui(self) -> None:
         """Initialise the layout, canvas, splitters, and sidebar."""
@@ -162,12 +162,11 @@ class FimamaGui(QMainWindow):
         splitter.setSizes([900, 300])
 
     def _load_editor(self) -> None:
-        """Initialise the editor widget and bind its modification signal."""
-        # Clear existing sidebar if loading a new map
+        """Initialise the editor widget and bind its signal."""
         for i in reversed(range(self.sidebar_layout.count())): 
-            widget_to_remove = self.sidebar_layout.itemAt(i).widget()
-            self.sidebar_layout.removeWidget(widget_to_remove)
-            widget_to_remove.setParent(None)
+            widget = self.sidebar_layout.itemAt(i).widget()
+            self.sidebar_layout.removeWidget(widget)
+            widget.setParent(None)
 
         self.heightmap_editor = HeightmapEditor(
             figure=self.figure,
@@ -177,7 +176,6 @@ class FimamaGui(QMainWindow):
             scale_config=self.config.scale_configuration
         )
         
-        # Listen for changes to flag the document as modified
         self.heightmap_editor.map_modified.connect(self._mark_modified)
         self.sidebar_layout.addWidget(self.heightmap_editor)
 
@@ -188,17 +186,14 @@ class FimamaGui(QMainWindow):
             self.setWindowTitle("Fimama Map Maker*")
 
     def _prompt_unsaved(self) -> bool:
-        """
-        Prompt user to save changes before proceeding.
-        Returns False if the user cancels the operation.
-        """
+        """Prompt user to save changes; returns False if cancelled."""
         if not self.is_modified:
             return True
 
         reply = QMessageBox.question(
             self,
             "Unsaved Changes",
-            "You have unsaved changes. Do you want to save before closing?",
+            "You have unsaved changes. Save before proceeding?",
             QMessageBox.StandardButton.Save |
             QMessageBox.StandardButton.Discard |
             QMessageBox.StandardButton.Cancel
@@ -210,15 +205,50 @@ class FimamaGui(QMainWindow):
             return False
         return True
 
+    def _prompt_save_cfg(self) -> None:
+        """Prompt the user to optionally save the new configuration state."""
+        reply = QMessageBox.question(
+            self,
+            "Save Configuration",
+            "Would you like to save this configuration to a file?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self._cmd_save_cfg()
+
     def _cmd_new(self) -> None:
-        """Command to generate a new map safely."""
+        """Command to generate an entirely new map."""
         if not self._prompt_unsaved():
             return
         
-        dialog = NewMapDialog(self)
+        dialog = MapSettingsDialog(config=self.config, parent=self)
+        dialog.setWindowTitle("Generate New Map")
+        
         if dialog.exec():
             _logger.info("New map generation requested.")
-            # Trigger configuration generation and rebuild here in the future.
+            self.config = dialog.get_config()
+            
+            # Generate new baseline map data
+            new_heights = construct_heightmap(config=self.config)
+            self.world_map = FimamaMap.make_map(heightmap=new_heights)
+            
+            # Completely replace the matplotlib figure
+            self.figure, self.axes = plot_map(
+                world_map=self.world_map,
+                colormap=self.colormap,
+                config=self.config.voronoi_configuration,
+                scale_config=self.config.scale_configuration,
+            )
+            
+            # Mount the new figure to the Qt window
+            new_canvas = FigureCanvasQTAgg(figure=self.figure)
+            self.scroll_area.setWidget(new_canvas)
+            self.canvas = new_canvas
+            self.canvas.wheelEvent = self._handle_zoom
+            
+            self._load_editor()
+            self.is_modified = False
+            self.setWindowTitle("Fimama Map Maker")
 
     def _cmd_open(self) -> None:
         """Command to open a saved map zip file."""
@@ -230,78 +260,158 @@ class FimamaGui(QMainWindow):
             caption="Open Fimama Map",
             filter="Fimama Map (*.zip)"
         )
-        
         if not filepath:
             return
 
-        try:
-            with zipfile.ZipFile(filepath, 'r') as zf:
-                # 1. Parse configuration YAML
-                yaml_data = zf.read("map_data.yaml")
-                config_dict = yaml.safe_load(yaml_data)
-                self.config = MapConfiguration(**config_dict)
+        with zipfile.ZipFile(file=filepath, mode='r') as zf:
+            # Load pristine YAML parameters
+            yaml_data = zf.read("map_data.yaml")
+            config_dict = yaml.safe_load(yaml_data)
+            self.config = MapConfiguration(**config_dict)
 
-                # 2. Extract exact numpy array
-                npy_data = zf.read("heightmap.npy")
-                buf = io.BytesIO(npy_data)
-                loaded_heights = np.load(buf)
-                
-                # Replace current heightmap data
-                self.world_map.heightmap = loaded_heights
+            # Load raw binary float data for the terrain
+            npy_data = zf.read("heightmap.npy")
+            buf = io.BytesIO(npy_data)
+            loaded_heights = np.load(file=buf)
+            self.world_map.heightmap = loaded_heights
 
-            self.is_modified = False
-            self.setWindowTitle("Fimama Map Maker")
-            self.heightmap_editor._update_plot()
-            _logger.info(f"Successfully loaded map from {filepath}")
-            
-        except Exception as e:
-            _logger.error(f"Failed to open map: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to load map:\n{e}")
+        self.is_modified = False
+        self.setWindowTitle("Fimama Map Maker")
+        self.heightmap_editor._update_plot()
+        _logger.info(f"Loaded map from {filepath}")
 
     def _cmd_save(self) -> bool:
-        """
-        Command to save the current map state to a zip archive.
-        Returns True if successful.
-        """
+        """Command to save the current map state to a zip archive."""
         filepath, _ = QFileDialog.getSaveFileName(
             parent=self,
             caption="Save Fimama Map",
             filter="Fimama Map (*.zip)"
         )
-        
         if not filepath:
             return False
 
-        # Ensure .zip extension
         if not filepath.endswith(".zip"):
             filepath += ".zip"
 
-        try:
-            with zipfile.ZipFile(filepath, 'w') as zf:
-                # 1. Serialize parameters to human-readable YAML
-                config_dict = self.config.model_dump()
-                yaml_str = yaml.dump(config_dict, sort_keys=False)
-                zf.writestr("map_data.yaml", yaml_str)
-                
-                # 2. Serialize exact heightmap float data to NumPy binary
-                buf = io.BytesIO()
-                np.save(file=buf, arr=self.world_map.heightmap)
-                zf.writestr("heightmap.npy", buf.getvalue())
-
-            self.is_modified = False
-            self.setWindowTitle("Fimama Map Maker")
-            _logger.info(f"Successfully saved map to {filepath}")
-            return True
+        with zipfile.ZipFile(file=filepath, mode='w') as zf:
+            # 'json' mode ensures enums/paths are cast to raw primitives
+            config_dict = self.config.model_dump(mode='json')
+            yaml_str = yaml.dump(
+                data=config_dict, 
+                sort_keys=False, 
+                default_flow_style=False
+            )
+            zf.writestr("map_data.yaml", yaml_str)
             
-        except Exception as e:
-            _logger.error(f"Failed to save map: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to save map:\n{e}")
-            return False
+            # Serialize exact heightmap float data to NumPy binary
+            buf = io.BytesIO()
+            np.save(file=buf, arr=self.world_map.heightmap)
+            zf.writestr("heightmap.npy", buf.getvalue())
 
-    def _cmd_settings(self) -> None:
-        """Command to open the application settings dialog."""
-        dialog = SettingsDialog(self)
-        dialog.exec()
+        self.is_modified = False
+        self.setWindowTitle("Fimama Map Maker")
+        _logger.info(f"Saved map to {filepath}")
+        return True
+
+    def _cmd_cfg_map(self) -> None:
+        """Open the Map Generation settings dialog."""
+        dialog = MapSettingsDialog(config=self.config, parent=self)
+        if dialog.exec():
+            self.config = dialog.get_config()
+            self._mark_modified()
+            self._prompt_save_cfg()
+
+    def _cmd_cfg_scale(self) -> None:
+        """Open the Map Scale settings dialog."""
+        dialog = ScaleSettingsDialog(
+            config=self.config.scale_configuration, parent=self
+        )
+        if dialog.exec():
+            self.config.scale_configuration = dialog.get_config()
+            self._mark_modified()
+
+            # Pass the new scaling object safely down the component tree
+            self.heightmap_editor.scale_config = self.config.scale_configuration
+            self.heightmap_editor.modifier.scale_config = self.config.scale_configuration
+            
+            # Re-read physical UI slider scales
+            self.heightmap_editor._update_labels()
+
+            # Dynamically update the plot bounds
+            scale_cfg = self.config.scale_configuration
+            collection = self.axes.collections[0]
+            collection.set_clim(
+                vmin=scale_cfg.min_elevation,
+                vmax=scale_cfg.max_elevation
+            )
+            
+            # Find the colorbar attached to the figure and dynamically update its unit label
+            for ax in self.figure.axes:
+                if ax != self.axes:
+                    ax.set_ylabel(f"Elevation ({scale_cfg.elevation_unit.value})")
+
+            self.canvas.draw_idle()
+            self._prompt_save_cfg()
+
+    def _cmd_cfg_perlin(self) -> None:
+        """Open the Perlin Noise settings dialog."""
+        if self.config.perlin_parameters is None:
+            self.config.perlin_parameters = PerlinParameters()
+            
+        dialog = PerlinSettingsDialog(
+            params=self.config.perlin_parameters, parent=self
+        )
+        if dialog.exec():
+            self.config.perlin_parameters = dialog.get_params()
+            self._mark_modified()
+            self._prompt_save_cfg()
+
+    def _cmd_cfg_voronoi(self) -> None:
+        """Open the Voronoi Visual settings dialog."""
+        if self.config.voronoi_configuration is None:
+            self.config.voronoi_configuration = VoronoiConfiguration()
+            
+        dialog = VoronoiSettingsDialog(
+            config=self.config.voronoi_configuration, parent=self
+        )
+        if dialog.exec():
+            self.config.voronoi_configuration = dialog.get_config()
+            self._mark_modified()
+            self._prompt_save_cfg()
+
+    def _cmd_save_cfg(self) -> None:
+        """Save just the current application settings to a YAML file."""
+        filepath, _ = QFileDialog.getSaveFileName(
+            parent=self,
+            caption="Save Configuration",
+            filter="YAML Configuration (*.yaml *.yml)"
+        )
+        if not filepath:
+            return
+
+        config_dict = self.config.model_dump(mode='json')
+        yaml_str = yaml.dump(
+            data=config_dict, sort_keys=False, default_flow_style=False
+        )
+        with open(file=filepath, mode='w', encoding='utf-8') as f:
+            f.write(yaml_str)
+        _logger.info(f"Saved configuration to {filepath}")
+
+    def _cmd_load_cfg(self) -> None:
+        """Load application settings from a YAML file."""
+        filepath, _ = QFileDialog.getOpenFileName(
+            parent=self,
+            caption="Load Configuration",
+            filter="YAML Configuration (*.yaml *.yml)"
+        )
+        if not filepath:
+            return
+
+        with open(file=filepath, mode='r', encoding='utf-8') as f:
+            config_dict = yaml.safe_load(f)
+        self.config = MapConfiguration(**config_dict)
+        self._mark_modified()
+        _logger.info(f"Loaded configuration from {filepath}")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Intercept application closure (Alt+F4, X button, Ctrl+W)."""
