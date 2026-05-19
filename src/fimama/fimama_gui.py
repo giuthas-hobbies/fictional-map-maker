@@ -72,7 +72,7 @@ class FimamaGui(QMainWindow):
 
         self.is_modified: bool = False
 
-        self.setWindowTitle("Fimama Map Maker")
+        self.setWindowTitle("Fictional Map Maker")
 
         self.showMaximized()
 

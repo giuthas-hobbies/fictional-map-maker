@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   would be nice.
 
 
-## [0.7.0] - 2026-05-18
+## [0.7.0] - 2026-05-19
 
 ### Highlights
 
@@ -53,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Save and load functionality. The save format is a zip file which contains
   parameters and other human readable parts of the map in human readable
   formats.
-- Export either the visible part of the map or the whole map.
+- Export either the visible part of the map or the whole map as an image.
 
 
 ## [0.6.0] - 2026-01-26
