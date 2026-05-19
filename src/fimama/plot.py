@@ -4,13 +4,12 @@ Plotting logic for rendering Fimama maps to Matplotlib figures.
 
 import logging
 
-import numpy as np
+# import numpy as np
 from matplotlib.axes import Axes
-from matplotlib.collections import PatchCollection
+from matplotlib.collections import PolyCollection
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
-from matplotlib.patches import Polygon
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+# from matplotlib.patches import Polygon
 
 from fimama.configuration import MapScaleConfiguration, VoronoiConfiguration
 from fimama.voronoi import FimamaMap
@@ -49,30 +48,19 @@ def plot_map(
     axes = fig.add_subplot(111)
     axes.set_aspect(aspect='equal', adjustable='box')
 
-    polygons = []
-    heights = []
-
     # Calculate the number of valid base grid points
     num_valid_points = len(world_map.points) - len(
         world_map.dummy_points
     )
-    heightmap_flat = world_map.heightmap.flatten()
+    verts = [
+        world_map.vertices[world_map.regions[world_map.point_region[i]]]
+        for i in range(num_valid_points)
+        if len(world_map.regions[world_map.point_region[i]]) > 0
+    ]
+    heights = world_map.heightmap.flatten()[:len(verts)]
 
-    for i in range(num_valid_points):
-        region_idx = world_map.point_region[i]
-        region = world_map.regions[region_idx]
-
-        # Only process closed polygons without infinity flags (-1)
-        if -1 not in region and len(region) > 0:
-            vertices = [world_map.vertices[v] for v in region]
-            polygon = Polygon(xy=vertices, closed=True)
-
-            polygons.append(polygon)
-            heights.append(heightmap_flat[i])
-
-    # Generate a collection of patches to easily apply colormaps
-    poly_collection = PatchCollection(patches=polygons, cmap=colormap)
-    poly_collection.set_array(np.array(heights))
+    poly_collection = PolyCollection(verts, cmap=colormap)
+    poly_collection.set_array(heights)
 
     # Explicitly lock the colormap boundaries to the physical scale.
     poly_collection.set_clim(
