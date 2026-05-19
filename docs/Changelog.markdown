@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Testing.
 * Undo for map editing.
+* Import bitmaps and similar as a heightmap.
+  * This should do round tripping of fimama-generated maps.
 * Make the maps extendable.
   * This includes continuing a map from one or more sides and
   * Creating submaps/overmaps with larger/smaller scales.
@@ -34,8 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * My own main application is a cylinder world.
   * SciPy can deal with Voronoi diagrams on a ball. Obviously we should be able
     to use this for mapping a whole planet.
-* Erosion/hydrology modelling with differentiation for different terrain types
-  would be nice.
+* Erosion/hydrology modelling
+  * Differentiation for terrain types would be nice.
+
+
+## [0.8.0] - 2026-05-23
+
+### Highlights
+
+- Testing
+- Undo and redo
 
 
 ## [0.7.0] - 2026-05-19
