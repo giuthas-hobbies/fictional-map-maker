@@ -45,7 +45,7 @@ def plot_map(
     if config is None:
         config = VoronoiConfiguration()
 
-    fig = Figure()
+    fig = Figure(layout='constrained')
     axes = fig.add_subplot(111)
     axes.set_aspect(aspect='equal', adjustable='box')
 
@@ -88,11 +88,8 @@ def plot_map(
     axes.set_ylim(bottom=0, top=world_map.grid_shape[1])
 
     # Add a colorbar to display the current scale unit
-    divider = make_axes_locatable(axes)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    colorbar = fig.colorbar(mappable=poly_collection, cax=cax)
+    colorbar = fig.colorbar(mappable=poly_collection,
+                            ax=axes, shrink=0.6, pad=0.05)
     colorbar.set_label(f"Elevation ({scale_config.elevation_unit.value})")
-
-    fig.tight_layout()
 
     return fig, axes

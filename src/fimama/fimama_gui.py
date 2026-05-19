@@ -73,7 +73,8 @@ class FimamaGui(QMainWindow):
         self.is_modified: bool = False
 
         self.setWindowTitle("Fimama Map Maker")
-        self.resize(1200, 800)
+
+        self.showMaximized()
 
         self._setup_menus()
 
@@ -178,6 +179,7 @@ class FimamaGui(QMainWindow):
         plot_layout.setSpacing(0)
 
         self.canvas = FigureCanvasQTAgg(figure=self.figure)
+        self.canvas.setMinimumSize(200, 200)
         plot_layout.addWidget(self.canvas, 0, 0)
         self.canvas.wheelEvent = self._handle_zoom
 
@@ -383,7 +385,9 @@ class FimamaGui(QMainWindow):
 
             # Mount the new figure to the Qt window
             new_canvas = FigureCanvasQTAgg(figure=self.figure)
-            self.scroll_area.setWidget(new_canvas)
+            new_canvas.setMinimumSize(200, 200)
+            self.plot_container.layout().replaceWidget(self.canvas, new_canvas)
+            self.canvas.deleteLater()
             self.canvas = new_canvas
             self.canvas.wheelEvent = self._handle_zoom
 
