@@ -45,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Highlights
 
 - Undo and redo for map editing.
+- Better colormap with the option 'atlas'
+
+### Bugs
+
+- dark-atlas and light-atlas colormaps need to be re-mapped to produce a
+  correct sea level. 
 
 
 ## [0.7.0] - 2026-05-19
