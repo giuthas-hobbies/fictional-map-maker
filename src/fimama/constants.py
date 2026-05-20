@@ -1,6 +1,6 @@
 from importlib.metadata import version
 
-from fimama.extended_external_classes import ListablePrintableEnum
+from fimama.enum_extensions import enum_union, ListablePrintableEnum
 
 # Program setup
 RESOURCE_ANCHOR = 'fimama.resources'
@@ -80,13 +80,24 @@ class DistanceUnit(ListablePrintableEnum):
     LEAGUE = "leagues"
 
 
-class MapTool(ListablePrintableEnum):
-    """Enumeration of available topographical tools."""
+class ToolMode(ListablePrintableEnum):
+    """Enumeration of tool interaction modes."""
+    POINT = "Point"
+    LINE = "Line"
+
+
+class PointTool(ListablePrintableEnum):
     HILL = "Hill"
     PIT = "Pit"
+
+
+class LineTool(ListablePrintableEnum):
     RIDGE = "Ridge"
     VALLEY = "Valley"
     STRAIT = "Strait"
+
+
+class GlobalTool(ListablePrintableEnum):
     MASK = "Mask"
     SMOOTH = "Smooth"
     INVERT = "Invert"
@@ -94,7 +105,6 @@ class MapTool(ListablePrintableEnum):
     ADD = "Add"
 
 
-class ToolMode(ListablePrintableEnum):
-    """Enumeration of tool interaction modes."""
-    POINT = "Point"
-    LINE = "Line"
+MapTool = enum_union(
+    name="MapTool", subenums=(PointTool, LineTool, GlobalTool)
+)

@@ -8,6 +8,7 @@ altering the topographical heightmap state stored in a `FimamaMap`.
 import logging
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 from fimama.configuration import MapScaleConfiguration
 from fimama.voronoi import FimamaMap
@@ -249,25 +250,38 @@ class HeightmapModifier:
         """
         Apply a mountain ridge along a given path.
 
+        Calculates a distance field to the path to ensure the elevation
+        is added exactly once, avoiding compound stacking.
+
         Parameters
         ----------
         path : list[tuple[int, int]]
             The continuous path of the ridge.
         power : float
-            Maximum elevation to add per step.
+            Maximum elevation to add.
         radius : int
             Radius of the ridge in grid cells.
         """
+        if not path:
+            return
         _logger.info(msg=f"Applying ridge along path of length {len(path)}")
-        for x, y in path:
-            self.apply_hill(
-                center_x=x,
-                center_y=y,
-                radius=radius,
-                power=power,
-                baseline=None,
-                blend_mode='add'
-            )
+
+        path_tree = cKDTree(data=path)
+        y_grid, x_grid = np.mgrid[:self.grid_height, :self.grid_width]
+        grid_points = np.c_[x_grid.ravel(), y_grid.ravel()]
+
+        distances, _ = path_tree.query(x=grid_points)
+        distances = distances.reshape(self.grid_height, self.grid_width)
+
+        mask = distances <= radius
+        normalized_dist = distances[mask] / radius
+        height_added = power * (0.5 + 0.5 * np.cos(normalized_dist * np.pi))
+
+        self.world_map.heightmap[mask] = np.clip(
+            a=self.world_map.heightmap[mask] + height_added,
+            a_min=self.scale_config.min_elevation,
+            a_max=self.scale_config.max_elevation
+        )
 
     def apply_valley(
         self, path: list[tuple[int, int]], power: float, radius: int
@@ -280,20 +294,30 @@ class HeightmapModifier:
         path : list[tuple[int, int]]
             The continuous path of the valley.
         power : float
-            Maximum elevation to subtract per step.
+            Maximum elevation to subtract.
         radius : int
             Radius of the valley in grid cells.
         """
+        if not path:
+            return
         _logger.info(msg=f"Applying valley along path of length {len(path)}")
-        for x, y in path:
-            self.apply_pit(
-                center_x=x,
-                center_y=y,
-                radius=radius,
-                power=power,
-                baseline=None,
-                blend_mode='add'
-            )
+
+        path_tree = cKDTree(data=path)
+        y_grid, x_grid = np.mgrid[:self.grid_height, :self.grid_width]
+        grid_points = np.c_[x_grid.ravel(), y_grid.ravel()]
+
+        distances, _ = path_tree.query(x=grid_points)
+        distances = distances.reshape(self.grid_height, self.grid_width)
+
+        mask = distances <= radius
+        normalized_dist = distances[mask] / radius
+        height_sub = power * (0.5 + 0.5 * np.cos(normalized_dist * np.pi))
+
+        self.world_map.heightmap[mask] = np.clip(
+            a=self.world_map.heightmap[mask] - height_sub,
+            a_min=self.scale_config.min_elevation,
+            a_max=self.scale_config.max_elevation
+        )
 
     def apply_strait(
         self, path: list[tuple[int, int]], power: float, radius: int
@@ -306,20 +330,30 @@ class HeightmapModifier:
         path : list[tuple[int, int]]
             The continuous path of the strait.
         power : float
-            Maximum elevation to subtract per step.
+            Maximum elevation to subtract.
         radius : int
             Radius of the strait in grid cells.
         """
+        if not path:
+            return
         _logger.info(msg=f"Applying strait along path of length {len(path)}")
-        for x, y in path:
-            self.apply_pit(
-                center_x=x,
-                center_y=y,
-                radius=radius,
-                power=power,
-                baseline=None,
-                blend_mode='add'
-            )
+
+        path_tree = cKDTree(data=path)
+        y_grid, x_grid = np.mgrid[:self.grid_height, :self.grid_width]
+        grid_points = np.c_[x_grid.ravel(), y_grid.ravel()]
+
+        distances, _ = path_tree.query(x=grid_points)
+        distances = distances.reshape(self.grid_height, self.grid_width)
+
+        mask = distances <= radius
+        normalized_dist = distances[mask] / radius
+        height_sub = power * (0.5 + 0.5 * np.cos(normalized_dist * np.pi))
+
+        self.world_map.heightmap[mask] = np.clip(
+            a=self.world_map.heightmap[mask] - height_sub,
+            a_min=self.scale_config.min_elevation,
+            a_max=self.scale_config.max_elevation
+        )
 
     def mask(self) -> None:
         """

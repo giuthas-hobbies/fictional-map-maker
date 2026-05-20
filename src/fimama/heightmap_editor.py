@@ -21,7 +21,9 @@ from PyQt6.QtWidgets import (
 )
 
 from fimama.configuration import MapScaleConfiguration
-from fimama.constants import MapTool, ToolMode
+from fimama.constants import (
+    ToolMode, PointTool, LineTool, GlobalTool, MapTool
+)
 from fimama.heightmap_modifier import HeightmapModifier
 from fimama.history import HeightmapEditCommand
 from fimama.voronoi import FimamaMap
@@ -153,81 +155,85 @@ class HeightmapEditor(QWidget):
 
         self._update_labels()
 
-        # Group 1: Point Tools
-        grp_point = QGroupBox("Point Tools (1 Click)")
-        layout_point = QVBoxLayout()
-        for tool in ["Hill", "Pit"]:
-            btn = QPushButton(text=tool)
-            self.tool_buttons[tool] = btn  # Store reference
-            btn.clicked.connect(
-                lambda checked, t=tool: self._set_tool(name=t, mode="Point")
-            )
-            layout_point.addWidget(btn)
-        grp_point.setLayout(layout_point)
-        layout.addWidget(grp_point)
-
-        # Group 2: Line Tools
-        grp_line = QGroupBox("Line Tools (2 Clicks)")
-        layout_line = QVBoxLayout()
-        for tool in ["Ridge", "Trough", "Strait"]:
-            btn = QPushButton(text=tool)
-            self.tool_buttons[tool] = btn  # Store reference
-            btn.clicked.connect(
-                lambda checked, t=tool: self._set_tool(name=t, mode="Line")
-            )
-            layout_line.addWidget(btn)
-        grp_line.setLayout(layout_line)
-        layout.addWidget(grp_line)
-
-        # Group 3: Global Tools
-        grp_global = QGroupBox("Global Tools (Instant)")
-        layout_global = QVBoxLayout()
-
-        btn_mask = QPushButton("Mask Edges")
-        btn_mask.clicked.connect(self._gui_mask)
-        layout_global.addWidget(btn_mask)
-
-        btn_smooth = QPushButton("Smooth Map")
-        btn_smooth.clicked.connect(self._gui_smooth)
-        layout_global.addWidget(btn_smooth)
-
-        btn_invert = QPushButton("Invert (H)")
-        btn_invert.clicked.connect(self._gui_invert)
-        layout_global.addWidget(btn_invert)
-
-        btn_multiply = QPushButton("Multiply x1.2")
-        btn_multiply.clicked.connect(self._gui_multiply)
-        layout_global.addWidget(btn_multiply)
-
-        btn_add = QPushButton("Add Power")
-        btn_add.clicked.connect(self._gui_add_val)
-        layout_global.addWidget(btn_add)
-
-        grp_global.setLayout(layout_global)
-        layout.addWidget(grp_global)
+        self._setup_tool_buttons(layout)
 
         layout.addStretch()
 
-    def _set_tool(self, name: str, mode: str) -> None:
-        """Activate an interactive tool and highlight its button."""
-        self.active_tool = name
-        self.tool_mode = mode
-        self.lbl_active_tool.setText(f"Active Tool: {name} ({mode})")
+    def _setup_tool_buttons(self, target_layout: QVBoxLayout) -> None:
+        """
+        Dynamically generate UI tool buttons based on tool enums.
 
-        # Highlight the active button and reset all others
-        for btn_name, btn in self.tool_buttons.items():
-            if btn_name == name:
-                # Use Qt Stylesheets to indicate the active state
-                btn.setStyleSheet(
-                    "background-color: #cce5ff; font-weight: bold;"
+        Parameters
+        ----------
+        target_layout : QVBoxLayout
+            The sidebar layout where the button groups will be added.
+        """
+        self._global_handlers = {
+            GlobalTool.MASK: self._gui_mask,
+            GlobalTool.SMOOTH: self._gui_smooth,
+            GlobalTool.INVERT: self._gui_invert,
+            GlobalTool.MULTIPLY: self._gui_multiply,
+            GlobalTool.ADD: self._gui_add_val,
+        }
+
+        # 1. Point Tools
+        point_box = QGroupBox("Point Brushes")
+        point_layout = QVBoxLayout()
+        point_box.setLayout(point_layout)
+        target_layout.addWidget(point_box)
+
+        for tool in PointTool:
+            btn = QPushButton(tool.value)
+            btn.clicked.connect(
+                lambda checked, t=tool: self._set_active_tool(
+                    tool=t, mode=ToolMode.POINT
                 )
-            else:
-                btn.setStyleSheet("")
+            )
+            point_layout.addWidget(btn)
 
-        self.x_indices.clear()
-        self.y_indices.clear()
-        self.temp_path_line.set_visible(False)
-        self.canvas.draw_idle()
+        # 2. Line Tools
+        line_box = QGroupBox("Line Brushes")
+        line_layout = QVBoxLayout()
+        line_box.setLayout(line_layout)
+        target_layout.addWidget(line_box)
+
+        for tool in LineTool:
+            btn = QPushButton(tool.value)
+            btn.clicked.connect(
+                lambda checked, t=tool: self._set_active_tool(
+                    tool=t, mode=ToolMode.LINE
+                )
+            )
+            line_layout.addWidget(btn)
+
+        # 3. Global Modifiers
+        global_box = QGroupBox("Global Modifiers")
+        global_layout = QVBoxLayout()
+        global_box.setLayout(global_layout)
+        target_layout.addWidget(global_box)
+
+        for tool in GlobalTool:
+            btn = QPushButton(tool.value)
+            btn.clicked.connect(
+                lambda checked, t=tool: self._execute_global_tool(t)
+            )
+            global_layout.addWidget(btn)
+
+    def _set_active_tool(
+        self, tool: PointTool | LineTool, mode: ToolMode
+    ) -> None:
+        """Route tool selection and automatically lock in the ToolMode."""
+        self.active_tool = tool
+        self.tool_mode = mode
+        _logger.info(msg=f"Selected {tool.value} in {mode.value} mode.")
+
+    def _execute_global_tool(self, tool: GlobalTool) -> None:
+        """Route global button clicks to the correct handler."""
+        handler = self._global_handlers.get(tool)
+        if handler:
+            handler()
+        else:
+            _logger.warning(msg=f"No handler defined for {tool.value}")
 
     def _get_power(self) -> float:
         """Map the 0-100 slider strictly to 0.0 - max_elevation bounds."""
@@ -294,52 +300,64 @@ class HeightmapEditor(QWidget):
             x=event.xdata, y=event.ydata
         )
 
-        if self.tool_mode == ToolMode.POINT:
-            self._drag_active = True
-            self._drag_baseline = self.world_map.heightmap.copy()
-            self._last_drag_point = (hover_x, hover_y)
-            self._apply_point_tool(
-                x=hover_x, y=hover_y, baseline=self._drag_baseline
-            )
-            self._update_plot()
-
-        elif self.tool_mode == ToolMode.LINE:
-            self.x_indices.append(hover_x)
-            self.y_indices.append(hover_y)
-
-            if len(self.x_indices) == 2:
-                baseline = self.world_map.heightmap.copy()
-
-                randomness = self.slider_randomness.value() / 100.0
-                path = self.modifier.generate_random_walk(
-                    start_x=self.x_indices[0],
-                    start_y=self.y_indices[0],
-                    end_x=self.x_indices[1],
-                    end_y=self.y_indices[1],
-                    randomness=randomness
+        match self.tool_mode:
+            case ToolMode.POINT:
+                self._drag_active = True
+                self._drag_baseline = self.world_map.heightmap.copy()
+                self._last_drag_point = (hover_x, hover_y)
+                self._apply_point_tool(
+                    x=hover_x, y=hover_y, baseline=self._drag_baseline
                 )
+                self._update_plot()
+            case ToolMode.LINE:
+                self.x_indices.append(hover_x)
+                self.y_indices.append(hover_y)
 
-                pwr = self._get_power()
-                rad = self._get_radius()
+                if len(self.x_indices) == 2:
+                    baseline = self.world_map.heightmap.copy()
 
-                if self.active_tool == MapTool.RIDGE:
-                    self.modifier.apply_ridge(
-                        path=path, power=pwr, radius=rad
-                    )
-                elif self.active_tool == MapTool.VALLEY:
-                    self.modifier.apply_valley(
-                        path=path, power=pwr, radius=rad
-                    )
-                elif self.active_tool == MapTool.STRAIT:
-                    self.modifier.apply_strait(
-                        path=path, power=pwr, radius=rad
+                    randomness = self.slider_randomness.value() / 100.0
+                    path = self.modifier.generate_random_walk(
+                        start_x=self.x_indices[0],
+                        start_y=self.y_indices[0],
+                        end_x=self.x_indices[1],
+                        end_y=self.y_indices[1],
+                        randomness=randomness
                     )
 
-                self.temp_path_line.set_visible(False)
-                self.x_indices.clear()
-                self.y_indices.clear()
-                self._push_undo_command(
-                    baseline=baseline, text=f"{self.active_tool.value} Line"
+                    pwr = self._get_power()
+                    rad = self._get_radius()
+
+                    match self.active_tool:
+                        case LineTool.RIDGE:
+                            self.modifier.apply_ridge(
+                                path=path, power=pwr, radius=rad
+                            )
+                        case LineTool.VALLEY:
+                            self.modifier.apply_valley(
+                                path=path, power=pwr, radius=rad
+                            )
+                        case LineTool.STRAIT:
+                            self.modifier.apply_strait(
+                                path=path, power=pwr, radius=rad
+                            )
+                        case _:
+                            raise ValueError(
+                                f"Action Failed: Tool '{self.active_tool}' "
+                                f"is not a registered Line tool option."
+                            )
+
+                    self.temp_path_line.set_visible(False)
+                    self.x_indices.clear()
+                    self.y_indices.clear()
+                    self._push_undo_command(
+                        baseline=baseline,
+                        text=f"{self.active_tool.value} Line"
+                    )
+            case _:
+                raise ValueError(
+                    f"Fatal: Unhandled ToolMode in on_press: "
+                    f"'{self.tool_mode}'"
                 )
 
     def on_hover(self, event) -> None:
@@ -356,36 +374,58 @@ class HeightmapEditor(QWidget):
         )
 
         # Handle interactive dragging
-        if self._drag_active and self.tool_mode == ToolMode.POINT:
-            if (hover_x, hover_y) != self._last_drag_point:
-                self._apply_point_tool(
-                    x=hover_x, y=hover_y, baseline=self._drag_baseline
-                )
-                self._last_drag_point = (hover_x, hover_y)
-                self._update_plot()
+        if self._drag_active:
+            match self.tool_mode:
+                case ToolMode.POINT:
+                    if (hover_x, hover_y) != self._last_drag_point:
+                        self._apply_point_tool(
+                            x=hover_x, y=hover_y, baseline=self._drag_baseline
+                        )
+                        self._last_drag_point = (hover_x, hover_y)
+                        self._update_plot()
+                case ToolMode.LINE:
+                    raise ValueError(
+                        f"Trying to drag a line mode tool: {self.active_tool}."
+                    )
+                case _:
+                    raise ValueError(
+                        f"Fatal: Unhandled ToolMode during drag: "
+                        f"'{self.tool_mode}'"
+                    )
 
         # Handle Visual Cursors
-        if self.tool_mode in (ToolMode.POINT, ToolMode.LINE):
-            self.cursor_circle.set_center((event.xdata, event.ydata))
-            self.cursor_circle.set_visible(True)
-
-            if self.tool_mode == ToolMode.LINE and len(self.x_indices) == 1:
-                randomness = self.slider_randomness.value() / 100.0
-                path = self.modifier.generate_random_walk(
-                    start_x=self.x_indices[0],
-                    start_y=self.y_indices[0],
-                    end_x=hover_x,
-                    end_y=hover_y,
-                    randomness=randomness
-                )
-                path_plot_x = [p[1] for p in path]
-                path_plot_y = [p[0] for p in path]
-                self.temp_path_line.set_data(path_plot_x, path_plot_y)
-                self.temp_path_line.set_visible(True)
-            else:
+        match self.tool_mode:
+            case ToolMode.POINT:
+                self.cursor_circle.set_center((event.xdata, event.ydata))
+                self.cursor_circle.set_visible(True)
                 self.temp_path_line.set_visible(False)
 
-            self.canvas.draw_idle()
+            case ToolMode.LINE:
+                self.cursor_circle.set_center((event.xdata, event.ydata))
+                self.cursor_circle.set_visible(True)
+                if len(self.x_indices) == 1:
+                    randomness = self.slider_randomness.value() / 100.0
+                    path = self.modifier.generate_random_walk(
+                        start_x=self.x_indices[0],
+                        start_y=self.y_indices[0],
+                        end_x=hover_x,
+                        end_y=hover_y,
+                        randomness=randomness
+                    )
+                    path_plot_x = [p[1] for p in path]
+                    path_plot_y = [p[0] for p in path]
+                    self.temp_path_line.set_data(path_plot_x, path_plot_y)
+                    self.temp_path_line.set_visible(True)
+                else:
+                    self.temp_path_line.set_visible(False)
+
+            case _:
+                raise ValueError(
+                    f"Fatal: Unhandled ToolMode for visual cursor: "
+                    f"'{self.tool_mode}'"
+                )
+
+        self.canvas.draw_idle()
 
     def on_release(self, event) -> None:
         """
@@ -413,12 +453,12 @@ class HeightmapEditor(QWidget):
         rad = self._get_radius()
 
         match self.active_tool:
-            case MapTool.HILL:
+            case PointTool.HILL:
                 self.modifier.apply_hill(
                     center_x=x, center_y=y, radius=rad, power=pwr,
                     baseline=baseline, blend_mode='max'
                 )
-            case MapTool.PIT:
+            case PointTool.PIT:
                 self.modifier.apply_pit(
                     center_x=x, center_y=y, radius=rad, power=pwr,
                     baseline=baseline, blend_mode='min'
