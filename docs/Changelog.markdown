@@ -25,7 +25,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Testing
 * New and updated edit commands/buttons.
 * Import bitmaps and similar as a heightmap.
   * This should do round tripping of fimama-generated maps.
@@ -38,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     to use this for mapping a whole planet.
 * Erosion/hydrology modelling
   * Differentiation for terrain types would be nice.
+
+
+## [0.9.0] - 2026-05-25
+
+### Highlights
+
+- Implemented some unit tests and some integration tests.
 
 
 ## [0.8.0] - 2026-05-20
