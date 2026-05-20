@@ -57,7 +57,7 @@ def atlas() -> LinearSegmentedColormap:
         (1.00000, '#FFFFFF'),  # White (extreme peaks)
     ]
     return LinearSegmentedColormap.from_list(
-        name='topo_asymmetric', colors=colors
+        name='atlas', colors=colors
     )
 
 
@@ -83,11 +83,16 @@ def get_colormap(
     """
     Get a colormap.
 
+    If loading a colormap from an internal resource file, the sea level should
+    be indicated by a repeated position index. The format of the .gpf file
+    rows is:
+    `[pos index] [red] [green] [blue]`
+    And the position indeces should be in increasing order.
+
     Parameters
     ----------
-    config : MapConfiguration
-        Configuration for building the heightmap and selecting or loading the
-        colormap.
+    colormap_name : str
+        Name of the colormap.
 
     Returns
     -------
@@ -100,11 +105,42 @@ def get_colormap(
             f"{colormap_name}.gpf")
         with as_file(colormap_resource) as colormap_path:
             _logger.debug(f"Reading the colormap from {colormap_path}.")
-            tmp = []
-            for row in np.loadtxt(colormap_path):
-                tmp.append([row[0], row[1:4]])
-            colormap = LinearSegmentedColormap.from_list(
-                colormap_name, tmp)
+            # Read the raw floating point space-separated values
+        raw_data = np.loadtxt(colormap_path)
+
+        # 1. Find the coastline boundary (indicated by a duplicate
+        # position index)
+        positions = raw_data[:, 0]
+        split_pos = 0.5  # Fallback just in case no duplicate is found
+        for i in range(1, len(positions)):
+            if positions[i] == positions[i - 1]:
+                split_pos = positions[i]
+                break
+
+        # 2. Rescale positions to center the coastline exactly at 0.5
+        colors = []
+        for row in raw_data:
+            pos, r, g, b = row[0], row[1], row[2], row[3]
+
+            if pos <= split_pos:
+                # Stretch water [0.0 -> split_pos] into [0.0 -> 0.5]
+                new_pos = (pos / split_pos) * 0.5 if split_pos > 0 else 0.0
+            else:
+                # Stretch land [split_pos -> 1.0] into [0.5 -> 1.0]
+                new_pos = 0.5 + ((pos - split_pos) / (1.0 - split_pos)) * 0.5
+
+            # Matplotlib requires position values to be strictly increasing.
+            # When we hit the duplicate coastline value, push the land side
+            # up slightly.
+            if colors and new_pos <= colors[-1][0]:
+                new_pos = colors[-1][0] + 1e-5
+
+            # Cap at 1.0 to prevent floating point math overshoots
+            new_pos = min(1.0, new_pos)
+
+            colors.append((new_pos, (r, g, b)))
+        colormap = LinearSegmentedColormap.from_list(
+            colormap_name, colors)
     elif colormap_name in ColormapInternal:
         colormap = construct_topographic_colormap(colormap_name=colormap_name)
     else:
