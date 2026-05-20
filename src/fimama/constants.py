@@ -78,3 +78,23 @@ class DistanceUnit(ListablePrintableEnum):
     FEET = "feet"
     MILE = "miles"
     LEAGUE = "leagues"
+
+
+class MapTool(ListablePrintableEnum):
+    """Enumeration of available topographical tools."""
+    HILL = "Hill"
+    PIT = "Pit"
+    RIDGE = "Ridge"
+    VALLEY = "Valley"
+    STRAIT = "Strait"
+    MASK = "Mask"
+    SMOOTH = "Smooth"
+    INVERT = "Invert"
+    MULTIPLY = "Multiply"
+    ADD = "Add"
+
+
+class ToolMode(ListablePrintableEnum):
+    """Enumeration of tool interaction modes."""
+    POINT = "Point"
+    LINE = "Line"

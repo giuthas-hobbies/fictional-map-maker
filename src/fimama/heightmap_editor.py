@@ -4,8 +4,13 @@ GUI editor tool for the interactive manipulation of heightmaps.
 
 import logging
 
+from matplotlib.axes import Axes
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+from matplotlib.patches import Circle
 import numpy as np
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QUndoStack
 from PyQt6.QtWidgets import (
     QGroupBox,
     QLabel,
@@ -14,13 +19,11 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from matplotlib.axes import Axes
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-from matplotlib.figure import Figure
-from matplotlib.patches import Circle
 
 from fimama.configuration import MapScaleConfiguration
+from fimama.constants import MapTool, ToolMode
 from fimama.heightmap_modifier import HeightmapModifier
+from fimama.history import HeightmapEditCommand
 from fimama.voronoi import FimamaMap
 
 _logger = logging.getLogger(__name__)
@@ -42,6 +45,7 @@ class HeightmapEditor(QWidget):
         The state container storing the map data.
     scale_config : MapScaleConfiguration
         The configuration detailing the physical bounds of the map.
+    undo_stack : QUndoStack
     """
 
     # Signal emitted whenever the heightmap is altered
@@ -53,7 +57,8 @@ class HeightmapEditor(QWidget):
         axes: Axes,
         canvas: FigureCanvasQTAgg,
         world_map: FimamaMap,
-        scale_config: MapScaleConfiguration
+        scale_config: MapScaleConfiguration,
+        undo_stack: QUndoStack,
     ) -> None:
         super().__init__()
         self.figure = figure
@@ -61,14 +66,15 @@ class HeightmapEditor(QWidget):
         self.canvas = canvas
         self.world_map = world_map
         self.scale_config = scale_config
+        self.undo_stack = undo_stack
 
         self.modifier = HeightmapModifier(
             world_map=self.world_map,
             scale_config=self.scale_config
         )
 
-        self.active_tool: str | None = None
-        self.tool_mode: str | None = None
+        self.active_tool: MapTool | None = None
+        self.tool_mode: ToolMode = ToolMode.POINT
 
         self.x_indices: list[int] = []
         self.y_indices: list[int] = []
@@ -87,10 +93,18 @@ class HeightmapEditor(QWidget):
         # Store references to interactive tool buttons for highlighting
         self.tool_buttons: dict[str, QPushButton] = {}
 
+        # Drag State trackers
+        self._drag_active: bool = False
+        self._drag_baseline: np.ndarray | None = None
+        self._last_drag_point: tuple[int, int] | None = None
+
         self._setup_ui()
 
         self.cid_click = self.canvas.mpl_connect(
-            s='button_press_event', func=self.on_click
+            s='button_press_event', func=self.on_press
+        )
+        self.cid_click = self.canvas.mpl_connect(
+            s='button_release_event', func=self.on_release
         )
         self.cid_hover = self.canvas.mpl_connect(
             s='motion_notify_event', func=self.on_hover
@@ -155,7 +169,7 @@ class HeightmapEditor(QWidget):
         # Group 2: Line Tools
         grp_line = QGroupBox("Line Tools (2 Clicks)")
         layout_line = QVBoxLayout()
-        for tool in ["Range", "Trough", "Strait"]:
+        for tool in ["Ridge", "Trough", "Strait"]:
             btn = QPushButton(text=tool)
             self.tool_buttons[tool] = btn  # Store reference
             btn.clicked.connect(
@@ -220,6 +234,17 @@ class HeightmapEditor(QWidget):
         pct = self.slider_power.value() / 100.0
         return float(pct * self.scale_config.max_elevation)
 
+    def _get_radius(self) -> int:
+        """
+        Retrieve the current brush radius from the UI slider.
+
+        Returns
+        -------
+        int
+            The radius in grid cells.
+        """
+        return self.slider_radius.value()
+
     def _update_labels(self) -> None:
         """Update slider labels with their physical unit readouts."""
         pwr = self._get_power()
@@ -236,21 +261,115 @@ class HeightmapEditor(QWidget):
         self.cursor_circle.set_radius(rad)
         self.canvas.draw_idle()
 
-    def on_hover(self, event) -> None:
-        """Update cursor circle and draw dynamic random paths."""
-        if event.inaxes != self.axes:
+    def _push_undo_command(self, baseline: np.ndarray, text: str) -> None:
+        """
+        Extract the sparse delta from a modification and push it to the stack.
+        """
+        changed = self.world_map.heightmap != baseline
+        if np.any(changed):
+            indices = np.where(changed)
+            old_vals = baseline[indices]
+            new_vals = self.world_map.heightmap[indices]
+
+            # Revert the live map temporarily so the QUndoCommand handles the
+            # forward state transition natively via redo()
+            self.world_map.heightmap[indices] = old_vals
+
+            cmd = HeightmapEditCommand(
+                heightmap=self.world_map.heightmap,
+                indices=indices,
+                old_values=old_vals,
+                new_values=new_vals,
+                redraw_callback=self._update_plot,
+                text=text
+            )
+            self.undo_stack.push(cmd)
+
+    def on_press(self, event) -> None:
+        """Handle start of dragging (Point) or sequence clicking (Line)."""
+        if event.inaxes != self.axes or not self.active_tool:
             return
 
         hover_x, hover_y = self.world_map.closest_point(
             x=event.xdata, y=event.ydata
         )
 
-        if self.tool_mode in ("Point", "Line"):
+        if self.tool_mode == ToolMode.POINT:
+            self._drag_active = True
+            self._drag_baseline = self.world_map.heightmap.copy()
+            self._last_drag_point = (hover_x, hover_y)
+            self._apply_point_tool(
+                x=hover_x, y=hover_y, baseline=self._drag_baseline
+            )
+            self._update_plot()
+
+        elif self.tool_mode == ToolMode.LINE:
+            self.x_indices.append(hover_x)
+            self.y_indices.append(hover_y)
+
+            if len(self.x_indices) == 2:
+                baseline = self.world_map.heightmap.copy()
+
+                randomness = self.slider_randomness.value() / 100.0
+                path = self.modifier.generate_random_walk(
+                    start_x=self.x_indices[0],
+                    start_y=self.y_indices[0],
+                    end_x=self.x_indices[1],
+                    end_y=self.y_indices[1],
+                    randomness=randomness
+                )
+
+                pwr = self._get_power()
+                rad = self._get_radius()
+
+                if self.active_tool == MapTool.RIDGE:
+                    self.modifier.apply_ridge(
+                        path=path, power=pwr, radius=rad
+                    )
+                elif self.active_tool == MapTool.VALLEY:
+                    self.modifier.apply_valley(
+                        path=path, power=pwr, radius=rad
+                    )
+                elif self.active_tool == MapTool.STRAIT:
+                    self.modifier.apply_strait(
+                        path=path, power=pwr, radius=rad
+                    )
+
+                self.temp_path_line.set_visible(False)
+                self.x_indices.clear()
+                self.y_indices.clear()
+                self._push_undo_command(
+                    baseline=baseline, text=f"{self.active_tool.value} Line"
+                )
+
+    def on_hover(self, event) -> None:
+        """Handle continuous drawing during a drag, and cursor updates."""
+        if event.inaxes != self.axes:
+            if self.cursor_circle.get_visible():
+                self.cursor_circle.set_visible(False)
+                self.temp_path_line.set_visible(False)
+                self.canvas.draw_idle()
+            return
+
+        hover_x, hover_y = self.world_map.closest_point(
+            x=event.xdata, y=event.ydata
+        )
+
+        # Handle interactive dragging
+        if self._drag_active and self.tool_mode == ToolMode.POINT:
+            if (hover_x, hover_y) != self._last_drag_point:
+                self._apply_point_tool(
+                    x=hover_x, y=hover_y, baseline=self._drag_baseline
+                )
+                self._last_drag_point = (hover_x, hover_y)
+                self._update_plot()
+
+        # Handle Visual Cursors
+        if self.tool_mode in (ToolMode.POINT, ToolMode.LINE):
             self.cursor_circle.set_center((event.xdata, event.ydata))
             self.cursor_circle.set_visible(True)
 
-            # Draw the dynamic random walk bridging the first click and cursor
-            if self.tool_mode == "Line" and len(self.x_indices) == 1:
+            if self.tool_mode == ToolMode.LINE and len(self.x_indices) == 1:
                 randomness = self.slider_randomness.value() / 100.0
                 path = self.modifier.generate_random_walk(
                     start_x=self.x_indices[0],
@@ -259,17 +378,25 @@ class HeightmapEditor(QWidget):
                     end_y=hover_y,
                     randomness=randomness
                 )
-
-                # The grid is flipped so we flip the coordinates here.
                 path_plot_x = [p[1] for p in path]
                 path_plot_y = [p[0] for p in path]
-
                 self.temp_path_line.set_data(path_plot_x, path_plot_y)
                 self.temp_path_line.set_visible(True)
             else:
                 self.temp_path_line.set_visible(False)
 
             self.canvas.draw_idle()
+
+    def on_release(self, event) -> None:
+        """
+        Conclude a drag operation and package it as a single undo command.
+        """
+        if self._drag_active:
+            self._drag_active = False
+            self._push_undo_command(
+                self._drag_baseline, f"{self.active_tool} Brush")
+            self._drag_baseline = None
+            self._last_drag_point = None
 
     def on_leave(self, event) -> None:
         """
@@ -280,73 +407,50 @@ class HeightmapEditor(QWidget):
             self.temp_path_line.set_visible(False)
             self.canvas.draw_idle()
 
-    def on_click(self, event) -> None:
-        """Handle execution of Point and Line tools upon clicking the map."""
-        if event.inaxes != self.axes or not self.active_tool:
-            return
-
-        x, y = self.world_map.closest_point(x=event.xdata, y=event.ydata)
+    def _apply_point_tool(self, x: int, y: int, baseline: np.ndarray) -> None:
+        """Helper to route execution of active point tool safely."""
         pwr = self._get_power()
-        rad = self.slider_radius.value()
-        rand_val = self.slider_randomness.value() / 100.0
+        rad = self._get_radius()
 
-        if self.tool_mode == "Point":
-            if self.active_tool == "Hill":
-                self.modifier.hill(
-                    center_x=x, center_y=y, power=pwr, radius=rad
+        match self.active_tool:
+            case MapTool.HILL:
+                self.modifier.apply_hill(
+                    center_x=x, center_y=y, radius=rad, power=pwr,
+                    baseline=baseline, blend_mode='max'
                 )
-            elif self.active_tool == "Pit":
-                self.modifier.pit(
-                    center_x=x, center_y=y, power=pwr, radius=rad
+            case MapTool.PIT:
+                self.modifier.apply_pit(
+                    center_x=x, center_y=y, radius=rad, power=pwr,
+                    baseline=baseline, blend_mode='min'
                 )
-            self._update_plot()
-
-        elif self.tool_mode == "Line":
-            self.x_indices.append(x)
-            self.y_indices.append(y)
-
-            if len(self.x_indices) == 2:
-                # 2nd click: extract exact path
-                # shown on screen to modify terrain
-                path = self.modifier.generate_random_walk(
-                    start_x=self.x_indices[0],
-                    start_y=self.y_indices[0],
-                    end_x=self.x_indices[1],
-                    end_y=self.y_indices[1],
-                    randomness=rand_val
-                )
-
-                if self.active_tool == "Range":
-                    self.modifier.range_(path=path, power=pwr, radius=rad)
-                elif self.active_tool == "Trough":
-                    self.modifier.trough(path=path, power=pwr, radius=rad)
-                elif self.active_tool == "Strait":
-                    self.modifier.strait(path=path, power=pwr, radius=rad)
-
-                self.temp_path_line.set_visible(False)
-                self.x_indices.clear()
-                self.y_indices.clear()
-                self._update_plot()
+            case _:
+                raise ValueError(
+                    "Unrecognised active tool {self.active_tool}.")
 
     def _gui_mask(self) -> None:
+        baseline = self.world_map.heightmap.copy()
         self.modifier.mask()
-        self._update_plot()
+        self._push_undo_command(baseline, "Apply Mask")
 
     def _gui_smooth(self) -> None:
+        baseline = self.world_map.heightmap.copy()
         self.modifier.smooth()
-        self._update_plot()
+        self._push_undo_command(baseline, "Smooth Map")
 
     def _gui_invert(self) -> None:
+        baseline = self.world_map.heightmap.copy()
         self.modifier.invert()
-        self._update_plot()
+        self._push_undo_command(baseline, "Invert Map")
 
     def _gui_multiply(self) -> None:
+        baseline = self.world_map.heightmap.copy()
         self.modifier.multiply()
-        self._update_plot()
+        self._push_undo_command(baseline, "Multiply Heights")
 
     def _gui_add_val(self) -> None:
+        baseline = self.world_map.heightmap.copy()
         self.modifier.add(amount=self._get_power())
-        self._update_plot()
+        self._push_undo_command(baseline, "Add Flat Height")
 
     def _update_plot(self) -> None:
         """Push updated heights to the canvas and redraw."""

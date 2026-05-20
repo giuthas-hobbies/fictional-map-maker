@@ -4,6 +4,7 @@ Main GUI application for Fimama.
 
 import io
 import logging
+import os
 import zipfile
 
 import numpy as np
@@ -11,7 +12,9 @@ import yaml
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.colors import LinearSegmentedColormap
 from PyQt6.QtCore import Qt, QSignalBlocker
-from PyQt6.QtGui import QAction, QCloseEvent, QKeySequence, QWheelEvent
+from PyQt6.QtGui import (
+    QAction, QCloseEvent, QKeySequence, QWheelEvent, QUndoStack
+)
 from PyQt6.QtWidgets import (
     QFileDialog,
     QGridLayout,
@@ -71,12 +74,16 @@ class FimamaGui(QMainWindow):
         self.zoom_factor: float = 1.0
 
         self.is_modified: bool = False
+        self.current_filepath: str | None = None
 
-        self.setWindowTitle("Fictional Map Maker")
+        self.undo_stack = QUndoStack(parent=self)
+        self.undo_stack.cleanChanged.connect(
+            self._on_history_clean_changed
+        )
 
         self.showMaximized()
 
-        self._setup_menus()
+        self._set_up_menus()
 
         self.figure, self.axes = plot_map(
             world_map=self.world_map,
@@ -85,9 +92,10 @@ class FimamaGui(QMainWindow):
             scale_config=self.config.scale_configuration,
         )
 
-        self._setup_ui()
+        self._set_up_ui()
+        self._update_window_title()
 
-    def _setup_menus(self) -> None:
+    def _set_up_menus(self) -> None:
         """Construct the menu bar and bind actions to shortcuts."""
         menubar = self.menuBar()
 
@@ -119,6 +127,19 @@ class FimamaGui(QMainWindow):
         action_quit.setShortcuts(["Ctrl+Q", "Ctrl+W"])
         action_quit.triggered.connect(self.close)
         file_menu.addAction(action_quit)
+
+        # --- Edit Menu ---
+        edit_menu = menubar.addMenu("&Edit")
+
+        action_undo = QAction("&Undo", self)
+        action_undo.setShortcut(QKeySequence.StandardKey.Undo)
+        action_undo.triggered.connect(self.undo_stack.undo)
+        edit_menu.addAction(action_undo)
+
+        action_redo = QAction("&Redo", self)
+        action_redo.setShortcut(QKeySequence.StandardKey.Redo)
+        action_redo.triggered.connect(self.undo_stack.redo)
+        edit_menu.addAction(action_redo)
 
         # --- View Menu ---
         view_menu = menubar.addMenu("&View")
@@ -168,7 +189,7 @@ class FimamaGui(QMainWindow):
         act_save_cfg.triggered.connect(self._cmd_save_cfg)
         settings_menu.addAction(act_save_cfg)
 
-    def _setup_ui(self) -> None:
+    def _set_up_ui(self) -> None:
         """Initialise the layout, canvas, splitters, and sidebar."""
         splitter = QSplitter(orientation=Qt.Orientation.Horizontal)
         self.setCentralWidget(splitter)
@@ -201,7 +222,7 @@ class FimamaGui(QMainWindow):
         splitter.addWidget(self.sidebar_container)
 
         self._load_editor()
-        splitter.setSizes([900, 300])
+        splitter.setSizes([1000, 200])
 
     def _cmd_zoom_in(self) -> None:
         self.zoom_factor *= 1.2
@@ -316,36 +337,74 @@ class FimamaGui(QMainWindow):
             axes=self.axes,
             canvas=self.canvas,
             world_map=self.world_map,
-            scale_config=self.config.scale_configuration
+            scale_config=self.config.scale_configuration,
+            undo_stack=self.undo_stack,
         )
 
         self.heightmap_editor.map_modified.connect(self._mark_modified)
         self.sidebar_layout.addWidget(self.heightmap_editor)
 
+    def _on_history_clean_changed(self, is_clean: bool) -> None:
+        """
+        Handle undo history clean state changes.
+
+        This is automatically triggered by QUndoStack when an action is
+        pushed or when the user undoes back to the last saved state.
+
+        Parameters
+        ----------
+        is_clean : bool
+            Whether the undo stack considers the current state clean.
+        """
+        self.is_modified = not is_clean
+        self._update_window_title()
+
+    def _update_window_title(self) -> None:
+        """
+        Centralise the construction of the main window title.
+
+        Builds the title using the base application name, the currently
+        active filename (if any), and an asterisk if there are unsaved
+        edits.
+        """
+        base_title = "Fictional Map Maker"
+
+        # Default to "Untitled" if no file is currently associated
+        file_name = "Untitled"
+        if self.current_filepath:
+            file_name = os.path.basename(self.current_filepath)
+
+        modified_indicator = "*" if self.is_modified else ""
+
+        self.setWindowTitle(f"{base_title} - {file_name}{modified_indicator}")
+
     def _mark_modified(self) -> None:
-        """Flag the current map state as having unsaved changes."""
+        """
+        Flag the current map state as having unsaved changes.
+        """
         if not self.is_modified:
             self.is_modified = True
-            self.setWindowTitle("Fimama Map Maker*")
+            self._update_window_title()
 
     def _prompt_unsaved(self) -> bool:
         """Prompt user to save changes; returns False if cancelled."""
         if not self.is_modified:
             return True
 
-        reply = QMessageBox.question(
-            self,
-            "Unsaved Changes",
-            "You have unsaved changes. Save before proceeding?",
-            QMessageBox.StandardButton.Save |
-            QMessageBox.StandardButton.Discard |
-            QMessageBox.StandardButton.Cancel
-        )
+        if hasattr(self, 'undo_stack') and self.undo_stack.canUndo():
+            reply = QMessageBox.question(
+                self,
+                "Unsaved Changes",
+                "You have unsaved changes. Save before proceeding?",
+                QMessageBox.StandardButton.Save |
+                QMessageBox.StandardButton.Discard |
+                QMessageBox.StandardButton.Cancel
+            )
 
-        if reply == QMessageBox.StandardButton.Save:
-            return self._cmd_save()
-        elif reply == QMessageBox.StandardButton.Cancel:
-            return False
+            if reply == QMessageBox.StandardButton.Save:
+                return self._cmd_save()
+            elif reply == QMessageBox.StandardButton.Cancel:
+                return False
         return True
 
     def _prompt_save_cfg(self) -> None:
@@ -392,8 +451,8 @@ class FimamaGui(QMainWindow):
             self.canvas.wheelEvent = self._handle_zoom
 
             self._load_editor()
-            self.is_modified = False
-            self.setWindowTitle("Fimama Map Maker")
+            self.current_filepath = None
+            self.undo_stack.clear()
 
     def _cmd_open(self) -> None:
         """Command to open a saved map zip file."""
@@ -420,8 +479,8 @@ class FimamaGui(QMainWindow):
             loaded_heights = np.load(file=buf)
             self.world_map.heightmap = loaded_heights
 
-        self.is_modified = False
-        self.setWindowTitle("Fimama Map Maker")
+        self.current_filepath = filepath
+        self.undo_stack.clear()
         self.heightmap_editor._update_plot()
         _logger.info(f"Loaded map from {filepath}")
 
@@ -453,8 +512,8 @@ class FimamaGui(QMainWindow):
             np.save(file=buf, arr=self.world_map.heightmap)
             zf.writestr("heightmap.npy", buf.getvalue())
 
-        self.is_modified = False
-        self.setWindowTitle("Fimama Map Maker")
+        self.current_filepath = filepath
+        self.undo_stack.setClean()
         _logger.info(f"Saved map to {filepath}")
         return True
 
@@ -599,7 +658,16 @@ class FimamaGui(QMainWindow):
         _logger.info(f"Image successfully exported to {filepath}")
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        """Intercept application closure (Alt+F4, X button, Ctrl+W)."""
+        """
+        Intercept application closure (Alt+F4, X button, Ctrl+W).
+
+        Prompts the user to save unsaved changes before exiting.
+
+        Parameters
+        ----------
+        event : QCloseEvent
+            The Qt close event triggered by the user or system.
+        """
         if self._prompt_unsaved():
             event.accept()
         else:
