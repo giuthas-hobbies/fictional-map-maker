@@ -222,7 +222,7 @@ class FimamaGui(QMainWindow):
         splitter.addWidget(self.sidebar_container)
 
         self._load_editor()
-        splitter.setSizes([1000, 200])
+        splitter.setSizes([1100, 100])
 
     def _cmd_zoom_in(self) -> None:
         self.zoom_factor *= 1.2

@@ -56,10 +56,17 @@ LINE_POWER_MAP: dict[int, float] = {
 
 class ColormapFiles(ListablePrintableEnum):
     """
-    FIMAMA's own colormaps.
+    FIMAMA's colormap files.
     """
     DARK_ATLAS = "dark-atlas"
     LIGHT_ATLAS = "light-atlas"
+
+
+class ColormapInternal(ListablePrintableEnum):
+    """
+    Procedurally generated colormaps.
+    """
+    ATLAS = "atlas"
 
 
 class MapGenerator(ListablePrintableEnum):

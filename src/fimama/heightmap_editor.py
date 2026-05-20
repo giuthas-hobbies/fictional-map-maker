@@ -92,9 +92,6 @@ class HeightmapEditor(QWidget):
             [], [], 'r--', visible=False, linewidth=2
         )
 
-        # Store references to interactive tool buttons for highlighting
-        self.tool_buttons: dict[str, QPushButton] = {}
-
         # Drag State trackers
         self._drag_active: bool = False
         self._drag_baseline: np.ndarray | None = None
@@ -119,7 +116,7 @@ class HeightmapEditor(QWidget):
         """Initialise the layout, sliders, and grouped tool buttons."""
         layout = QVBoxLayout(self)
 
-        self.lbl_active_tool = QLabel(text="Active Tool: None")
+        self.lbl_active_tool = QLabel(text=f"Active Tool: {self.active_tool}")
         self.lbl_active_tool.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.lbl_active_tool)
 
@@ -176,6 +173,8 @@ class HeightmapEditor(QWidget):
             GlobalTool.ADD: self._gui_add_val,
         }
 
+        self._tool_buttons: dict[PointTool | LineTool, QPushButton] = {}
+
         # 1. Point Tools
         point_box = QGroupBox("Point Brushes")
         point_layout = QVBoxLayout()
@@ -184,12 +183,14 @@ class HeightmapEditor(QWidget):
 
         for tool in PointTool:
             btn = QPushButton(tool.value)
+            btn.setCheckable(True)
             btn.clicked.connect(
                 lambda checked, t=tool: self._set_active_tool(
                     tool=t, mode=ToolMode.POINT
                 )
             )
             point_layout.addWidget(btn)
+            self._tool_buttons[tool] = btn
 
         # 2. Line Tools
         line_box = QGroupBox("Line Brushes")
@@ -199,12 +200,14 @@ class HeightmapEditor(QWidget):
 
         for tool in LineTool:
             btn = QPushButton(tool.value)
+            btn.setCheckable(True)
             btn.clicked.connect(
                 lambda checked, t=tool: self._set_active_tool(
                     tool=t, mode=ToolMode.LINE
                 )
             )
             line_layout.addWidget(btn)
+            self._tool_buttons[tool] = btn
 
         # 3. Global Modifiers
         global_box = QGroupBox("Global Modifiers")
@@ -222,10 +225,37 @@ class HeightmapEditor(QWidget):
     def _set_active_tool(
         self, tool: PointTool | LineTool, mode: ToolMode
     ) -> None:
-        """Route tool selection and automatically lock in the ToolMode."""
-        self.active_tool = tool
-        self.tool_mode = mode
-        _logger.info(msg=f"Selected {tool.value} in {mode.value} mode.")
+        """
+        Route tool selection, handle toggling off, and update UI states.
+
+        Parameters
+        ----------
+        tool : PointTool | LineTool
+            The newly selected tool.
+        mode : ToolMode
+            The interaction mode for the canvas.
+        """
+        if self.active_tool == tool:
+            # Deactivate if the currently active tool is clicked again
+            self.active_tool = None
+            _logger.info(msg=f"Deactivated {tool.value}.")
+        else:
+            self.active_tool = tool
+            self.tool_mode = mode
+            _logger.info(msg=f"Selected {tool.value} in {mode.value} mode.")
+
+        self.lbl_active_tool.setText(f"Active Tool: {self.active_tool}")
+
+        # Visually sink the active button and raise all others
+        for t, btn in self._tool_buttons.items():
+            btn.setChecked(t == self.active_tool)
+
+        # Clean up any partial line paths if switching or deactivating
+        if not self.active_tool or self.tool_mode != ToolMode.LINE:
+            self.temp_path_line.set_visible(False)
+            self.x_indices.clear()
+            self.y_indices.clear()
+            self.canvas.draw_idle()
 
     def _execute_global_tool(self, tool: GlobalTool) -> None:
         """Route global button clicks to the correct handler."""

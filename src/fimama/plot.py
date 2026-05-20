@@ -4,14 +4,13 @@ Plotting logic for rendering Fimama maps to Matplotlib figures.
 
 import logging
 
-# import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.collections import PolyCollection
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 from matplotlib.figure import Figure
-# from matplotlib.patches import Polygon
 
 from fimama.configuration import MapScaleConfiguration, VoronoiConfiguration
+from fimama.load import construct_topographic_colormap
 from fimama.voronoi import FimamaMap
 
 _logger = logging.getLogger(__name__)
@@ -19,7 +18,7 @@ _logger = logging.getLogger(__name__)
 
 def plot_map(
     world_map: FimamaMap,
-    colormap: LinearSegmentedColormap | str = "terrain",
+    colormap: LinearSegmentedColormap | str = "atlas",
     config: VoronoiConfiguration | None = None,
     scale_config: MapScaleConfiguration | None = None,
 ) -> tuple[Figure, Axes]:
@@ -59,7 +58,20 @@ def plot_map(
     ]
     heights = world_map.heightmap.flatten()[:len(verts)]
 
-    poly_collection = PolyCollection(verts, cmap=colormap)
+    if isinstance(colormap, str):
+        match colormap:
+            case "atlas":
+                colormap = construct_topographic_colormap("atlas")
+            case _:
+                raise ValueError(f"Unknown colormap requested: {colormap}.")
+
+    norm = TwoSlopeNorm(
+        vmin=scale_config.min_elevation,
+        vcenter=0.0,
+        vmax=scale_config.max_elevation
+    )
+
+    poly_collection = PolyCollection(verts, cmap=colormap, norm=norm)
     poly_collection.set_array(heights)
 
     # Explicitly lock the colormap boundaries to the physical scale.

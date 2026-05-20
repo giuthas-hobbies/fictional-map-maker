@@ -25,8 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-* Testing.
-* Undo for map editing.
+- Testing
+* New and updated edit commands/buttons.
 * Import bitmaps and similar as a heightmap.
   * This should do round tripping of fimama-generated maps.
 * Make the maps extendable.
@@ -40,12 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Differentiation for terrain types would be nice.
 
 
-## [0.8.0] - 2026-05-23
+## [0.8.0] - 2026-05-20
 
 ### Highlights
 
-- Testing
-- Undo and redo
+- Undo and redo for map editing.
 
 
 ## [0.7.0] - 2026-05-19
