@@ -25,7 +25,7 @@ jobs:
       - name: Install System Dependencies for PyQt6 and Headless Display
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libxcb-cursor0 libxkbcommon-x11-0
+          sudo apt-get install -y xvfb libxcb-cursor0 libxkbcommon-x11-0 libegl1 libopengl0
 
       - name: Install Package and Test Dependencies
         run: |
