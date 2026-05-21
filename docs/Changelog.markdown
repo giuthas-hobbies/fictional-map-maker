@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Differentiation for terrain types would be nice.
 
 
-## [0.9.0] - 2026-05-21
+## [0.9.0] - 2026-05-20
 
 ### Highlights
 
