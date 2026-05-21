@@ -45,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Implemented some unit tests and some integration tests.
 
+### Fixed
+
+- 'dark-atlas' and 'light-atlas' colormaps now produce a correct sea level. 
+
 
 ## [0.8.0] - 2026-05-20
 
@@ -55,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bugs
 
-- dark-atlas and light-atlas colormaps need to be re-mapped to produce a
+- 'dark-atlas' and 'light-atlas' colormaps need to be re-mapped to produce a
   correct sea level. 
 
 
