@@ -34,4 +34,4 @@ jobs:
 
       - name: Run tests with virtual display
         run: |
-          xvfb-run -m pytest tests/
+          xvfb-run python -m pytest tests/
