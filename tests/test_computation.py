@@ -6,7 +6,6 @@ that serve as choke points during map generation and modification.
 """
 
 import numpy as np
-import pytest
 
 from fimama.configuration import MapScaleConfiguration, PerlinParameters
 from fimama.heightmap_modifier import HeightmapModifier
@@ -90,8 +89,8 @@ def test_distance_field_ridge_application() -> None:
     modifier.apply_ridge(path=path, power=power, radius=radius)
 
     # Verify the center of the path received the maximum power
-    assert world_map.heightmap[5, 6] == power
+    assert world_map.heightmap[6, 5] == power
 
     # Verify the limits cannot be exceeded with massive power
     modifier.apply_ridge(path=path, power=2000.0, radius=radius)
-    assert world_map.heightmap[5, 6] == scale_config.max_elevation
+    assert world_map.heightmap[6, 5] == scale_config.max_elevation
