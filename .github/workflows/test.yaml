@@ -31,6 +31,7 @@ jobs:
         run: |
           # Assuming you have your test dependencies (pytest, pytest-qt) defined
           uv pip install --system -e .[dev] 
+          uv pip install --system pytest pytest-qt
 
       - name: Run tests with virtual display
         run: |
