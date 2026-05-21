@@ -39,11 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Differentiation for terrain types would be nice.
 
 
-## [0.9.0] - 2026-05-25
+## [0.9.0] - 2026-05-21
 
 ### Highlights
 
 - Implemented some unit tests and some integration tests.
+
+#### Added
+
+- Some unit and integration tests. This is nothing too fancy yet.
 
 ### Fixed
 
