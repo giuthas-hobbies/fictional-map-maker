@@ -39,13 +39,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   * Differentiation for terrain types would be nice.
 
 
+## [0.10.0] - 2026-06-07
+
+### Highlights
+
+- New and updated edit commands/buttons.
+- Moved to {new version numbering}.
+- Code restructuring.
+
+### Added
+
+- Edit commands and buttons:
+  - .
+
+### Changed
+
+- Updated edit commands and buttons:
+  - 
+- Moved GUI modules to a new gui subpackage.
+
+### Fixed
+
+
 ## [0.9.0] - 2026-05-20
 
 ### Highlights
 
 - Implemented some unit tests and some integration tests.
 
-#### Added
+### Added
 
 - Some unit and integration tests. This is nothing too fancy yet.
 
