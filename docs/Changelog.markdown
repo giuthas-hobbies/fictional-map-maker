@@ -26,11 +26,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 * New and updated edit commands/buttons.
+* Could the voronoi feature be dynamically turned on when zooming? 
+  * Currently map gen does not really use voronoi cells for anything but later
+    it will.
+  * For this to work the voronoi grid would need to be genrated in a way that
+    is recoverable when needed. 
+  * It could also be generated once as a separate step and saved and used as
+    needed.
+  * Was there a reason why it cannot not be parallelised? Is the reason real or
+    hallucinated?
 * Import bitmaps and similar as a heightmap.
   * This should do round tripping of fimama-generated maps.
 * Make the maps extendable.
   * This includes continuing a map from one or more sides and
-  * Creating submaps/overmaps with larger/smaller scales.
+  * Creating submaps/overmaps with larger/smaller scales and different cell
+    sizes.
 * Provide means for working with different world geometries.
   * My own main application is a cylinder world.
   * SciPy can deal with Voronoi diagrams on a ball. Obviously we should be able
