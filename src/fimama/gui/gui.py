@@ -29,17 +29,18 @@ from PyQt6.QtWidgets import (
 from fimama.configuration import (
     MapConfiguration, PerlinParameters, VoronoiConfiguration
 )
-from fimama.dialogs import (
+from fimama.heightmap_editor import HeightmapEditor
+from fimama.heightmap_generation import construct_heightmap
+from fimama.plot import plot_map
+from fimama.voronoi import FimamaMap
+
+from .dialogs import (
     ExportDialog,
     MapSettingsDialog,
     PerlinSettingsDialog,
     ScaleSettingsDialog,
     VoronoiSettingsDialog,
 )
-from fimama.heightmap_editor import HeightmapEditor
-from fimama.heightmap_generation import construct_heightmap
-from fimama.plot import plot_map
-from fimama.voronoi import FimamaMap
 
 _logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import QApplication
 from fimama.load import load_map_configuration, get_colormap
 from fimama.heightmap_generation import construct_heightmap
 from fimama.voronoi import FimamaMap
-from fimama.fimama_gui import FimamaGui
+from fimama.gui import FimamaGui
 
 
 @click.command(name="open")
