@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import QPushButton
 
 from fimama.configuration import MapScaleConfiguration
 from fimama.constants import PointTool, ToolMode
-from fimama.heightmap_editor import HeightmapEditor
+from fimama.gui.heightmap_editor import HeightmapEditor
 from fimama.voronoi import FimamaMap
 
 
